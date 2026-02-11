@@ -29,7 +29,10 @@ jobs:
       # WEB (inclui Playwright porque ele está no web/)
       - name: Install Web deps
         working-directory: web
-        run: npm ci
+        run: |
+          npm cache clean --force
+          npm config set optional true
+          npm install
 
       - name: Build Web
         working-directory: web
