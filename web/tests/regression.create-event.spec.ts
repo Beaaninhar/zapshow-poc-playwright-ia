@@ -1,28 +1,13 @@
 import { test, expect } from "@playwright/test";
+import { login } from "./helpers/auth";
 
 test.beforeEach(async () => {
   const apiBase = process.env.E2E_API_URL || "http://localhost:3001";
   await fetch(`${apiBase}/test/reset`, { method: "POST" });
 });
 
-test("login works", async ({ page }) => {
-  await page.goto("/");
-
-  await page.getByLabel("Email").fill("qa@empresa.com");
-  await page.getByLabel("Senha").fill("123456");
-  await page.getByRole("button", { name: "Entrar" }).click();
-
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-});
-
-test("create event uses POST /events and appears in list", async ({ page }) => {
-  await page.goto("/");
-
-  // login
-  await page.getByLabel("Email").fill("qa@empresa.com");
-  await page.getByLabel("Senha").fill("123456");
-  await page.getByRole("button", { name: "Entrar" }).click();
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+test("create event and show in list @regression", async ({ page }) => {
+  await login(page);
 
   // go to create event
   await page.getByRole("button", { name: "Criar evento" }).click();
@@ -30,9 +15,8 @@ test("create event uses POST /events and appears in list", async ({ page }) => {
     page.getByRole("heading", { name: "Criar evento" }),
   ).toBeVisible();
 
-  const title = `My event ${Date.now()}`;
+  const title = `Evento ${Date.now()}`;
 
-  // wait for POST /events returning 201
   const wait = page.waitForResponse(
     (resp) =>
       resp.url().includes("/events") &&
