@@ -12,4 +12,21 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },
+
+  webServer: [
+    {
+      command: "npm run dev",
+      cwd: "../api",
+      url: "http://127.0.0.1:3001/events",
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+    {
+      command: "npm run dev -- --port 5173",
+      cwd: ".",
+      url: "http://127.0.0.1:5173",
+      reuseExistingServer: !process.env.CI,
+      timeout: 60_000,
+    },
+  ],
 });
