@@ -1,9 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { login } from "./helpers/auth";
 
-test.beforeEach(async () => {
-  const apiBase = process.env.E2E_API_URL || "http://localhost:3001";
-  await fetch(`${apiBase}/test/reset`, { method: "POST" });
+const API_BASE = "http://127.0.0.1:3001";
+
+test.beforeEach(async ({ request }) => {
+  const res = await request.post(`${API_BASE}/test/reset`);
+  expect(res.ok()).toBeTruthy();
 });
 
 async function loginAndGoToCreateEvent(page: any) {
