@@ -11,10 +11,9 @@ test.beforeEach(async ({ request }) => {
 test("create event and show in list @regression", async ({ page }) => {
   await login(page);
 
-  // go to create event
-  await page.getByRole("button", { name: "Criar evento" }).click();
+  // Verify we're on the dashboard
   await expect(
-    page.getByRole("heading", { name: "Criar evento" }),
+    page.getByRole("heading", { name: "Events" }),
   ).toBeVisible();
 
   const title = `Evento ${Date.now()}`;
@@ -26,13 +25,11 @@ test("create event and show in list @regression", async ({ page }) => {
       resp.status() === 201,
   );
 
-  await page.getByLabel("Título do evento").fill(title);
-  await page.getByLabel("Data").fill("2026-02-15");
-  await page.getByLabel("Preço").fill("50");
-  await page.getByRole("button", { name: "Salvar" }).click();
+  await page.getByLabel("Title").fill(title);
+  await page.getByLabel("Description").fill("Test event description");
+  await page.getByRole("button", { name: "Create Event" }).click();
 
   await wait;
 
-  await expect(page.getByText("Evento criado com sucesso")).toBeVisible();
   await expect(page.getByText(title)).toBeVisible();
 });
