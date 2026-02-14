@@ -93,6 +93,7 @@ export default function EventFormPage() {
         <TextField
           label="Date"
           type="date"
+          defaultValue={new Date().toISOString().split("T")[0]}
           InputLabelProps={{ shrink: true }}
           {...register("date")}
           error={Boolean(errors.date)}
