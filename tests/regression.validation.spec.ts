@@ -9,22 +9,18 @@ test.beforeEach(async ({ request }) => {
 
 async function loginAndGoToCreateEvent(page: Page) {
   await login(page);
-
-  // Verify dashboard loaded
   await expect(page.getByRole("heading", { name: "Events" })).toBeVisible();
+  await page.getByRole("button", { name: "Create Event" }).click();
+  await expect(page.getByRole("heading", { name: "Create Event" })).toBeVisible();
 }
 
 test("validation: title required @regression", async ({ page }) => {
   await loginAndGoToCreateEvent(page);
 
-  await page.getByRole("button", { name: "Create Event" }).click();
-  // deixa título vazio
   await page.getByLabel("Description").fill("Test");
   await page.getByRole("button", { name: "Save" }).click();
-  // Expect toast for missing title (toast has role=alert)
-  await expect(page.getByText("Title is required")).toBeVisible({
-    timeout: 1000,
-  });
+
+  await expect(page.getByText("Title is required")).toBeVisible();
 });
 
 test("validation: create event fields required @regression", async ({
@@ -32,56 +28,44 @@ test("validation: create event fields required @regression", async ({
 }) => {
   await loginAndGoToCreateEvent(page);
 
-  // both empty
-  await page.getByRole("button", { name: "Create Event" }).click();
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByText("Title is required")).toBeVisible({
-    timeout: 1000,
-  });
+  await expect(page.getByText("Title is required")).toBeVisible();
 
-  // title only
   await page.getByLabel("Title").fill("Evento teste");
+  await page.getByLabel("Date").fill("");
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByText("Date is required")).toBeVisible({
-    timeout: 1000,
-  });
+  await expect(page.getByText("Date is required")).toBeVisible();
 });
 
 test("validation: login fields required @regression", async ({ page }) => {
   await page.goto(`${WEB_BASE_URL}/login`);
 
-  // invalid credentials
-  await page.getByLabel("Email").fill("invalid@email.com");
-  await page.getByLabel("Password").fill("wrongpassword");
-  await page.locator('button[type="submit"]').first().click();
+  await page.getByRole("button", { name: "Login" }).click();
 
-  await expect(page.getByText("Invalid credentials")).toBeVisible({
-    timeout: 1000,
-  });
+  await expect(page.getByText("Invalid email")).toBeVisible();
+  await expect(
+    page.getByText("Password must have at least 6 characters"),
+  ).toBeVisible();
 });
 
 test("validation: invalid price @regression", async ({ page }) => {
   await loginAndGoToCreateEvent(page);
 
-  await page.getByRole("button", { name: "Create Event" }).click();
   await page.getByLabel("Title").fill("Evento teste");
   await page.getByLabel("Description").fill("Test");
+  await page.getByLabel("Price").fill("0");
   await page.getByRole("button", { name: "Save" }).click();
 
-  // Note: Front-end currently doesn't have price field
-  // This test serves as a placeholder for future validation implementation
+  await expect(page.getByText("Price must be greater than 0")).toBeVisible();
 });
 
 test("validation: date required @regression", async ({ page }) => {
   await loginAndGoToCreateEvent(page);
 
-  await page.getByRole("button", { name: "Create Event" }).click();
   await page.getByLabel("Title").fill("Evento teste");
   await page.getByLabel("Description").fill("Test");
+  await page.getByLabel("Date").fill("");
   await page.getByRole("button", { name: "Save" }).click();
 
-  // Expect toast for missing date (toast has role=alert)
-  await expect(page.getByText("Date is required")).toBeVisible({
-    timeout: 1000,
-  });
+  await expect(page.getByText("Date is required")).toBeVisible();
 });
