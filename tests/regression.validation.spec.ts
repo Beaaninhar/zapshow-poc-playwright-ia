@@ -11,7 +11,9 @@ async function loginAndGoToCreateEvent(page: Page) {
   await login(page);
   await expect(page.getByRole("heading", { name: "Events" })).toBeVisible();
   await page.getByRole("button", { name: "Create Event" }).click();
-  await expect(page.getByRole("heading", { name: "Create Event" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Create Event" }),
+  ).toBeVisible();
 }
 
 test("validation: title required @regression", async ({ page }) => {
@@ -56,7 +58,13 @@ test("validation: invalid price @regression", async ({ page }) => {
   await page.getByLabel("Price").fill("0");
   await page.getByRole("button", { name: "Save" }).click();
 
-  await expect(page.getByText("Price must be greater than 0")).toBeVisible();
+  // The application uses browser/native validation for the price field
+  // (validation bubble isn't part of the DOM), so assert the input is invalid
+  const price = page.getByLabel("Price");
+  const isValid = await price.evaluate((el: HTMLInputElement) =>
+    el.checkValidity(),
+  );
+  expect(isValid).toBeFalsy();
 });
 
 test("validation: date required @regression", async ({ page }) => {
