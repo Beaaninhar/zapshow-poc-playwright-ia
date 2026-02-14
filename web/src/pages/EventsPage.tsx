@@ -41,7 +41,12 @@ export default function EventsPage() {
 
   return (
     <Container maxWidth="md" sx={{ py: 6 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+      >
         <Typography component="h1" variant="h4">
           Events
         </Typography>
@@ -65,7 +70,9 @@ export default function EventsPage() {
               divider
               secondaryAction={
                 <Stack direction="row" spacing={1}>
-                  <Button onClick={() => navigate(`/events/${event.id}/edit`)}>Edit</Button>
+                  <Button onClick={() => navigate(`/events/${event.id}/edit`)}>
+                    Edit
+                  </Button>
                   <Button color="error" onClick={() => handleDelete(event.id)}>
                     Delete
                   </Button>

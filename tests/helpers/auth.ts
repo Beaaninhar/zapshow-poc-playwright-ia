@@ -1,7 +1,8 @@
 import { expect, Page } from "@playwright/test";
+import { WEB_BASE_URL } from "../constants";
 
 export async function login(page: Page) {
-  await page.goto("http://localhost:5173/");
+  await page.goto(`${WEB_BASE_URL}/login`);
 
   // Login form
   await expect(page.getByLabel(/email/i)).toBeVisible();

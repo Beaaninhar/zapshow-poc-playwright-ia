@@ -1,9 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { login } from "./helpers/auth";
+import { API_BASE_URL } from "./constants";
 
-const API_BASE = "http://127.0.0.1:3001";
 test.beforeEach(async ({ request }) => {
-  const res = await request.post(`${API_BASE}/test/reset`);
+  const res = await request.post(`${API_BASE_URL}/test/reset`);
   expect(res.ok()).toBeTruthy();
 });
 

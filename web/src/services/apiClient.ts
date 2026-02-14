@@ -25,7 +25,10 @@ async function parseResponse<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function login(email: string, password: string): Promise<{ token: string }> {
+export async function login(
+  email: string,
+  password: string,
+): Promise<{ token: string }> {
   const response = await fetch(`${API_BASE}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -50,7 +53,10 @@ export async function createEvent(payload: EventPayload): Promise<EventRecord> {
   return parseResponse<EventRecord>(response);
 }
 
-export async function updateEvent(id: string, payload: EventPayload): Promise<EventRecord> {
+export async function updateEvent(
+  id: string,
+  payload: EventPayload,
+): Promise<EventRecord> {
   const response = await fetch(`${API_BASE}/events/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

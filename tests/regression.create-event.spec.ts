@@ -1,10 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { login } from "./helpers/auth";
-
-const API_BASE = "http://127.0.0.1:3001";
+import { API_BASE_URL } from "./constants";
 
 test.beforeEach(async ({ request }) => {
-  const res = await request.post(`${API_BASE}/test/reset`);
+  const res = await request.post(`${API_BASE_URL}/test/reset`);
   expect(res.ok()).toBeTruthy();
 });
 
@@ -12,11 +11,11 @@ test("create event and show in list @regression", async ({ page }) => {
   await login(page);
 
   // Verify we're on the dashboard
-  await expect(
-    page.getByRole("heading", { name: "Events" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Events" })).toBeVisible();
 
   const title = `Evento ${Date.now()}`;
+
+  const dateISO = new Date().toISOString().split("T")[0];
 
   const wait = page.waitForResponse(
     (resp) =>
@@ -25,9 +24,13 @@ test("create event and show in list @regression", async ({ page }) => {
       resp.status() === 201,
   );
 
-  await page.getByLabel("Title").fill(title);
-  await page.getByLabel("Description").fill("Test event description");
   await page.getByRole("button", { name: "Create Event" }).click();
+  await page.getByLabel("Title").fill(title);
+  await page.getByRole("textbox", { name: "Date" }).fill(dateISO);
+  await page
+    .getByRole("textbox", { name: "Description" })
+    .fill("Test event description");
+  await page.getByRole("button", { name: "Save" }).click();
 
   await wait;
 

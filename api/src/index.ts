@@ -44,7 +44,9 @@ app.get("/events", (_req, res) => {
 app.post("/events", (req, res) => {
   const { title, description, date, price } = req.body || {};
   if (!title || !date || typeof price !== "number") {
-    return res.status(400).json({ error: "title, date and price are required" });
+    return res
+      .status(400)
+      .json({ error: "title, date and price are required" });
   }
 
   const event: Event = {
@@ -66,7 +68,9 @@ app.put("/events/:id", (req, res) => {
 
   const { title, description, date, price } = req.body || {};
   if (!title || !date || typeof price !== "number") {
-    return res.status(400).json({ error: "title, date and price are required" });
+    return res
+      .status(400)
+      .json({ error: "title, date and price are required" });
   }
 
   const updated: Event = { id, title, description, date, price };
@@ -90,7 +94,9 @@ app.get("/profile", (_req, res) => {
 app.put("/profile", (req, res) => {
   const { name, email, phone } = req.body || {};
   if (!name || !email || !phone) {
-    return res.status(400).json({ error: "name, email and phone are required" });
+    return res
+      .status(400)
+      .json({ error: "name, email and phone are required" });
   }
 
   profile = { name, email, phone };

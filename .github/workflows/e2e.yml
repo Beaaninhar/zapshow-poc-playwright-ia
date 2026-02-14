@@ -16,41 +16,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
           cache-dependency-path: |
-            api/package-lock.json
-            web/package-lock.json
+            package-lock.json
 
-      # API
-      - name: Install API deps
-        working-directory: api
+      - name: Install deps (workspaces)
         run: npm ci
 
-      - name: Start API
-        working-directory: api
-        run: |
-          nohup npm run dev > api.log 2>&1 &
-
-      # WEB
-      - name: Install Web deps (rebuild lock for Linux)
-        working-directory: web
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install --include=optional --no-audit --no-fund
-
-
       - name: Build Web
-        working-directory: web
-        run: npm run build
+        run: npm -w web run build
 
       - name: Install Playwright browsers
-        working-directory: web
         run: npx playwright install --with-deps
 
-      - name: Start Web (preview)
-        working-directory: web
+      - name: Start API
         run: |
-          nohup npm run preview -- --host 0.0.0.0 --port 5173 > web.log 2>&1 &
+          nohup npm run dev:api > api.log 2>&1 &
+
+      - name: Start Web (preview)
+        run: |
+          nohup npm -w web run preview -- --host 0.0.0.0 --port 5173 > web.log 2>&1 &
 
       - name: Wait for services
         run: |
@@ -64,11 +49,10 @@ jobs:
           done
 
       - name: Run Playwright
-        working-directory: web
         env:
           E2E_BASE_URL: http://127.0.0.1:5173
           E2E_API_URL: http://127.0.0.1:3001
-        run: npx playwright test
+        run: npx playwright test -c playwright.config.ts
 
       - name: Upload Playwright artifacts
         if: always()
@@ -76,8 +60,8 @@ jobs:
         with:
           name: playwright-artifacts
           path: |
-            web/playwright-report
-            web/test-results
+            tests/playwright-report
+            tests/test-results
 
       - name: Upload logs
         if: always()
@@ -85,5 +69,5 @@ jobs:
         with:
           name: service-logs
           path: |
-            api/api.log
-            web/web.log
+            api.log
+            web.log

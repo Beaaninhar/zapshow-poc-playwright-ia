@@ -15,8 +15,8 @@ e2e/blob-report/
 e2e/.cache/
 e2e/.auth/
 
-web/playwright-report/
-web/test-results/
+tests/playwright-report/
+tests/test-results/
 
 # Env
 .env

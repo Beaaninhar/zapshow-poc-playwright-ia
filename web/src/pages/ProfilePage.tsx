@@ -12,7 +12,9 @@ const phoneRegex = /^(\(\d{2}\)\s\d{5}-\d{4}|\d{11})$/;
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email"),
-  phone: z.string().regex(phoneRegex, "Phone must be (11) 99999-9999 or 11999999999"),
+  phone: z
+    .string()
+    .regex(phoneRegex, "Phone must be (11) 99999-9999 or 11999999999"),
 });
 
 type FormValues = z.infer<typeof schema>;

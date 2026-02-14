@@ -34,7 +34,13 @@ export default function LoginPage() {
       </Typography>
       <Stack component="form" spacing={2} onSubmit={handleSubmit}>
         <TextField label="Email" name="email" type="email" fullWidth required />
-        <TextField label="Password" name="password" type="password" fullWidth required />
+        <TextField
+          label="Password"
+          name="password"
+          type="password"
+          fullWidth
+          required
+        />
         <Button type="submit" variant="contained" disabled={loading}>
           Login
         </Button>

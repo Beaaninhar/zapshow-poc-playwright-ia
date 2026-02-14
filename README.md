@@ -21,39 +21,53 @@ Este projeto foi criado para:
 ---
 
 # 🏗 Arquitetura
-zapshow-poc-playwright-ia/
-│
-├── api/ # API mock (Express + TS)
-│ └── src/index.ts
-│
-├── web/ # Front-end (React + Vite + MUI)
-│ ├── src/
-│ ├── tests/
-│ │ ├── helpers/
-│ │ │ └── auth.ts
-│ │ ├── smoke.login.spec.ts
-│ │ ├── regression.create-event.spec.ts
-│ │ └── regression.validation.spec.ts
-│ └── playwright.config.ts
-│
-└── README.md
 
+**Monorepo com npm workspaces:**
+
+```
+zapshow-poc-playwright-ia/
+├── api/                    # Mock API (Express + TypeScript)
+│  ├── Dockerfile
+│  ├── package.json
+│  └── src/
+│
+├── web/                    # Front-end (React + Vite + MUI)
+│  ├── Dockerfile
+│  ├── package.json
+│  └── src/
+│
+├── tests/                  # E2E Tests (Playwright)
+│  ├── helpers/
+│  │  └── auth.ts
+│  ├── smoke.login.spec.ts
+│  ├── regression.create-event.spec.ts
+│  ├── regression.validation.spec.ts
+│  └── constants.ts
+│
+├── docker-compose.yml       # Local container orchestration
+├── playwright.config.ts     # Unified test configuration
+├── package.json            # Monorepo configuration (workspaces)
+└── README.md
+```
 
 ---
 
 # 🛠 Tecnologias
 
 ### Front-end
+
 - React
 - Vite
 - Material UI
 
 ### Back-end (Mock)
+
 - Node.js
 - Express
 - TypeScript
 
 ### Testes
+
 - Playwright
 - TypeScript
 
@@ -68,18 +82,63 @@ zapshow-poc-playwright-ia/
 
 # ▶️ Como Rodar o Projeto
 
-## 1️⃣ Subir a API
+### Setup Inicial
 
 ```bash
-cd api
+# Instalar dependências (monorepo workspace)
 npm install
+
+# Rodar API + Web simultaneamente
 npm run dev
+```
 
-| Método | Endpoint    | Descrição                                                              |
-| ------ | ----------- | ---------------------------------------------------------------------- |
-| POST   | /login      | Login (email=[qa@empresa.com](mailto:qa@empresa.com), password=123456) |
-| GET    | /events     | Lista eventos                                                          |
-| POST   | /events     | Cria evento (retorna 201)                                              |
-| POST   | /test/reset | Reseta dados (usado nos testes)                                        |
+**Saídas esperadas:**
 
+- 🔵 API rodando em http://localhost:3001
+- 🟢 Web rodando em http://localhost:5173
 
+### Scripts Principais
+
+| Script                     | Descrição                        |
+| -------------------------- | -------------------------------- |
+| `npm run dev`              | Inicia API + Web em paralelo     |
+| `npm run dev:api`          | Inicia apenas a API              |
+| `npm run dev:web`          | Inicia apenas o Web              |
+| `npx playwright test`      | Executa todos os testes E2E      |
+| `npx playwright test --ui` | Abre Playwright UI com os testes |
+
+### API Endpoints
+
+| Método | Endpoint      | Descrição                                       |
+| ------ | ------------- | ----------------------------------------------- |
+| POST   | `/login`      | Login (email: qa@empresa.com, password: 123456) |
+| GET    | `/events`     | Lista eventos                                   |
+| POST   | `/events`     | Cria evento (retorna 201)                       |
+| POST   | `/test/reset` | Reseta dados (usado nos testes)                 |
+
+---
+
+# 🧪 Testes E2E
+
+Os testes estão organizados em dois grupos:
+
+### Smoke Tests
+
+- **`smoke.login.spec.ts`** — Validação básica do fluxo de login
+
+### Regression Tests
+
+- **`regression.create-event.spec.ts`** — Criação e validação de eventos
+- **`regression.validation.spec.ts`** — Validações gerais da aplicação
+
+### Rodando Testes
+
+```bash
+# Executar todos os testes (headless) - Relatório em: playwright-report/index.html
+npx playwright test
+
+# Abrir Playwright UI (modo interativo)
+npx playwright test --ui
+```
+
+---
