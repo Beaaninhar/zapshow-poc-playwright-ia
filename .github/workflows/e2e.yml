@@ -40,13 +40,16 @@ jobs:
       - name: Wait for services
         run: |
           for i in {1..60}; do
-            curl -sSf http://127.0.0.1:3001/events && break
+            curl -sSf http://127.0.0.1:3001/health >/dev/null && break
             sleep 1
           done
+          curl -sSf http://127.0.0.1:3001/health >/dev/null
+
           for i in {1..60}; do
-            curl -sSIf http://127.0.0.1:5173 && break
+            curl -sSIf http://127.0.0.1:5173 >/dev/null && break
             sleep 1
           done
+          curl -sSIf http://127.0.0.1:5173 >/dev/null
 
       - name: Run Playwright
         env:
