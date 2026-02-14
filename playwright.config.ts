@@ -2,7 +2,13 @@
 
 import { defineConfig } from "@playwright/test";
 
-import path from 'path';
+import { fileURLToPath } from "url";
+import * as path from "path";
+import { dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 
 export default defineConfig({
   testDir: path.join(__dirname, "tests"),
@@ -10,7 +16,13 @@ export default defineConfig({
   outputDir: path.join(__dirname, "tests", "test-results"),
 
   reporter: [
-    ["html", { outputFolder: path.join(__dirname, "tests", "playwright-report"), open: "never" }],
+    [
+      "html",
+      {
+        outputFolder: path.join(__dirname, "tests", "playwright-report"),
+        open: "never",
+      },
+    ],
     ["list"],
   ],
 
