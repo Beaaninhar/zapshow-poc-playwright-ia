@@ -47,6 +47,10 @@ let events: Event[] = [];
 let nextUserId = 3;
 let nextEventId = 1;
 
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok" });
+});
+
 function getRequestRole(req: express.Request): UserRole | null {
   const role = req.header("x-user-role");
   if (role === "MASTER" || role === "USER") return role;
