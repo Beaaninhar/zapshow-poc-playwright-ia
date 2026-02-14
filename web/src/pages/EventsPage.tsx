@@ -10,15 +10,20 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { deleteEvent, EventRecord, listEvents } from "../services/apiClient";
+import { AuthUser, EventRecord, listEvents } from "../services/apiClient";
 
-export default function EventsPage() {
+type EventsPageProps = {
+  currentUser: AuthUser;
+  onLogout: () => void;
+};
+
+export default function EventsPage({ currentUser, onLogout }: EventsPageProps) {
   const navigate = useNavigate();
   const [events, setEvents] = useState<EventRecord[]>([]);
 
   async function fetchEvents() {
     try {
-      const data = await listEvents();
+      const data = await listEvents(currentUser);
       setEvents(data);
     } catch {
       toast.error("Failed to load events");
@@ -28,16 +33,6 @@ export default function EventsPage() {
   useEffect(() => {
     void fetchEvents();
   }, []);
-
-  async function handleDelete(id: number) {
-    try {
-      await deleteEvent(String(id));
-      await fetchEvents();
-      toast.success("Event deleted");
-    } catch {
-      toast.error("Failed to delete event");
-    }
-  }
 
   return (
     <Container maxWidth="md" sx={{ py: 6 }}>
@@ -51,11 +46,16 @@ export default function EventsPage() {
           Events
         </Typography>
         <Stack direction="row" spacing={1}>
-          <Button variant="outlined" onClick={() => navigate("/profile")}>
-            Profile
-          </Button>
+          {currentUser.role === "MASTER" && (
+            <Button variant="outlined" onClick={() => navigate("/users")}>
+              Users
+            </Button>
+          )}
           <Button variant="contained" onClick={() => navigate("/events/new")}>
             Create Event
+          </Button>
+          <Button variant="text" onClick={onLogout}>
+            Logout
           </Button>
         </Stack>
       </Stack>
@@ -65,23 +65,14 @@ export default function EventsPage() {
       ) : (
         <List>
           {events.map((event) => (
-            <ListItem
-              key={event.id}
-              divider
-              secondaryAction={
-                <Stack direction="row" spacing={1}>
-                  <Button onClick={() => navigate(`/events/${event.id}/edit`)}>
-                    Edit
-                  </Button>
-                  <Button color="error" onClick={() => handleDelete(event.id)}>
-                    Delete
-                  </Button>
-                </Stack>
-              }
-            >
+            <ListItem key={event.id} divider>
               <ListItemText
                 primary={event.title}
-                secondary={`${event.description || "No description"} • ${event.date} • $${event.price}`}
+                secondary={`${event.description || "No description"} • ${event.date} • $${event.price.toFixed(2)}${
+                  currentUser.role === "MASTER"
+                    ? ` • Created by: ${event.createdByName}`
+                    : ""
+                }`}
               />
             </ListItem>
           ))}
