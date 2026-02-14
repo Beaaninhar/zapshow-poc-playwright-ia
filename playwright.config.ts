@@ -38,7 +38,7 @@ export default defineConfig({
     : [
         {
           command: "npm run dev:api",
-          url: "http://127.0.0.1:3001/events",
+          url: "http://127.0.0.1:3001/health",
           reuseExistingServer: true,
           timeout: 60_000,
         },

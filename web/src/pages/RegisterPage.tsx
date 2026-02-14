@@ -1,66 +1,53 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Container, Stack, TextField, Typography } from "@mui/material";
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { z } from "zod";
-import { getProfile, updateProfile } from "../services/apiClient";
-
-const phoneRegex = /^(\(\d{2}\)\s\d{5}-\d{4}|\d{11})$/;
+import { registerUser } from "../services/apiClient";
 
 const schema = z.object({
-  name: z.string().min(1, "Name is required"),
+  name: z.string().min(3, "Name must have at least 3 characters"),
   email: z.string().email("Invalid email"),
-  phone: z
-    .string()
-    .regex(phoneRegex, "Phone must be (11) 99999-9999 or 11999999999"),
+  password: z.string().min(6, "Password must have at least 6 characters"),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-export default function ProfilePage() {
+export default function RegisterPage() {
   const navigate = useNavigate();
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: "",
       email: "",
-      phone: "",
+      password: "",
     },
   });
 
-  useEffect(() => {
-    async function loadProfile() {
-      try {
-        const profile = await getProfile();
-        reset(profile);
-      } catch {
-        toast.error("Failed to load profile");
-      }
-    }
-
-    void loadProfile();
-  }, [reset]);
-
   async function onSubmit(values: FormValues) {
     try {
-      await updateProfile(values);
-      toast.success("Profile updated");
-    } catch {
-      toast.error("Failed to update profile");
+      await registerUser({ ...values, role: "USER" });
+      toast.success("Account created successfully");
+      navigate("/login");
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("email already exists")) {
+        toast.error("Email already exists");
+        return;
+      }
+
+      toast.error("Failed to create account");
     }
   }
 
   return (
     <Container maxWidth="sm" sx={{ py: 6 }}>
       <Typography component="h1" variant="h4" gutterBottom>
-        Profile
+        Create Account
       </Typography>
       <Stack component="form" spacing={2} onSubmit={handleSubmit(onSubmit)}>
         <TextField
@@ -71,24 +58,24 @@ export default function ProfilePage() {
         />
         <TextField
           label="Email"
+          type="email"
           {...register("email")}
           error={Boolean(errors.email)}
           helperText={errors.email?.message}
         />
         <TextField
-          label="Phone"
-          {...register("phone")}
-          error={Boolean(errors.phone)}
-          helperText={errors.phone?.message}
+          label="Password"
+          type="password"
+          {...register("password")}
+          error={Boolean(errors.password)}
+          helperText={errors.password?.message}
         />
-        <Stack direction="row" spacing={1}>
-          <Button variant="contained" type="submit" disabled={isSubmitting}>
-            Save
-          </Button>
-          <Button variant="outlined" onClick={() => navigate("/events")}>
-            Back to Events
-          </Button>
-        </Stack>
+        <Button type="submit" variant="contained" disabled={isSubmitting}>
+          Save
+        </Button>
+        <Button component={Link} to="/login" variant="text">
+          Back to Login
+        </Button>
       </Stack>
     </Container>
   );

@@ -1,11 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Container, Stack, TextField, Typography } from "@mui/material";
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { z } from "zod";
-import { createEvent, listEvents, updateEvent } from "../services/apiClient";
+import { AuthUser, createEvent } from "../services/apiClient";
 
 const schema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -16,54 +15,30 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-export default function EventFormPage() {
+type EventFormPageProps = {
+  currentUser: AuthUser;
+};
+
+export default function EventFormPage({ currentUser }: EventFormPageProps) {
   const navigate = useNavigate();
-  const { id } = useParams();
-  const isEdit = Boolean(id);
 
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       title: "",
       description: "",
-      date: "",
+      date: new Date().toISOString().split("T")[0],
       price: 1,
     },
   });
 
-  useEffect(() => {
-    async function loadEvent() {
-      if (!id) return;
-      try {
-        const events = await listEvents();
-        const event = events.find((item) => String(item.id) === id);
-        if (!event) {
-          toast.error("Event not found");
-          navigate("/events");
-          return;
-        }
-        reset(event);
-      } catch {
-        toast.error("Failed to load event");
-        navigate("/events");
-      }
-    }
-
-    void loadEvent();
-  }, [id, navigate, reset]);
-
   async function onSubmit(values: FormValues) {
     try {
-      if (id) {
-        await updateEvent(id, values);
-      } else {
-        await createEvent(values);
-      }
+      await createEvent(currentUser, values);
       toast.success("Event saved");
       navigate("/events");
     } catch {
@@ -74,7 +49,7 @@ export default function EventFormPage() {
   return (
     <Container maxWidth="sm" sx={{ py: 6 }}>
       <Typography component="h1" variant="h4" gutterBottom>
-        {isEdit ? "Edit Event" : "Create Event"}
+        Create Event
       </Typography>
 
       <Stack component="form" spacing={2} onSubmit={handleSubmit(onSubmit)}>
@@ -93,7 +68,6 @@ export default function EventFormPage() {
         <TextField
           label="Date"
           type="date"
-          defaultValue={new Date().toISOString().split("T")[0]}
           InputLabelProps={{ shrink: true }}
           {...register("date")}
           error={Boolean(errors.date)}
