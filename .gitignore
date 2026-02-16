@@ -30,3 +30,4 @@ tests/test-results/
 
 # temporary files
 *.tmp
+api/tests
