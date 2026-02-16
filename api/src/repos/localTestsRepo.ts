@@ -9,20 +9,26 @@ type LocalFile = {
 };
 
 export class LocalTestsRepo implements TestsRepo {
+  private cache: LocalFile | null = null;
+
   constructor(private filePath = join(process.cwd(), ".tmp", "tests-db.json")) {}
 
   private async load(): Promise<LocalFile> {
+    if (this.cache) return this.cache;
     try {
       const raw = await fs.readFile(this.filePath, "utf-8");
-      return JSON.parse(raw) as LocalFile;
+      this.cache = JSON.parse(raw) as LocalFile;
+      return this.cache;
     } catch {
-      return { tests: {} };
+      this.cache = { tests: {} };
+      return this.cache;
     }
   }
 
   private async save(data: LocalFile) {
     await fs.mkdir(dirname(this.filePath), { recursive: true });
     await fs.writeFile(this.filePath, JSON.stringify(data, null, 2), "utf-8");
+    this.cache = data;
   }
 
   async saveNewVersion(testId: string, definition: TestDefinition): Promise<TestVersion> {
@@ -39,7 +45,8 @@ export class LocalTestsRepo implements TestsRepo {
     };
 
     const key = item.testId;
-    data.tests[key] = [...(data.tests[key] ?? []), item];
+    const existing = data.tests[key] ?? [];
+    data.tests[key] = [...existing, item].slice(-2);
     await this.save(data);
 
     return item;

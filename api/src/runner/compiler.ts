@@ -4,7 +4,13 @@ export type Action =
   | { type: "goto"; url: string }
   | { type: "fill"; selector: string; value: string }
   | { type: "click"; selector: string }
-  | { type: "expectText"; selector: string; text: string };
+  | { type: "expectText"; selector: string; text: string }
+  | { type: "expectVisible"; selector: string }
+  | { type: "waitForTimeout"; ms: number }
+  | { type: "waitForSelector"; selector: string }
+  | { type: "hover"; selector: string }
+  | { type: "print"; message: string }
+  | { type: "screenshot"; name?: string };
 
 function getUnknownType(value: unknown): string {
   if (!value || typeof value !== "object") return "unknown";
@@ -22,6 +28,12 @@ export function compile(req: RunRequest): { baseURL: string; actions: Action[] }
       case "fill":
       case "click":
       case "expectText":
+      case "expectVisible":
+      case "waitForTimeout":
+      case "waitForSelector":
+      case "hover":
+      case "print":
+      case "screenshot":
         return s;
       default:
         throw new Error(`invalid step type: ${getUnknownType(s)}`);

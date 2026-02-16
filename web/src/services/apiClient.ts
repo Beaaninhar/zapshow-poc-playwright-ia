@@ -131,3 +131,92 @@ export async function createEvent(
 
   return parseResponse<EventRecord>(response);
 }
+
+export type Step =
+  | { type: "goto"; url: string }
+  | { type: "fill"; selector: string; value: string }
+  | { type: "click"; selector: string }
+  | { type: "expectText"; selector: string; text: string }
+  | { type: "expectVisible"; selector: string }
+  | { type: "waitForTimeout"; ms: number }
+  | { type: "waitForSelector"; selector: string }
+  | { type: "hover"; selector: string }
+  | { type: "print"; message: string }
+  | { type: "screenshot"; name?: string };
+
+export type StepResult = {
+  index: number;
+  step: Step;
+  status: "passed" | "failed";
+  durationMs?: number;
+  errorMessage?: string;
+};
+
+export type TestDefinition = {
+  name: string;
+  steps: Step[];
+};
+
+export type RunRequest = {
+  baseURL: string;
+  test: TestDefinition;
+  artifacts?: {
+    screenshot?: "off" | "only-on-failure" | "on";
+    video?: "on" | "off" | "retain-on-failure" | "on-first-retry";
+    trace?: "on" | "off" | "retain-on-failure" | "on-first-retry";
+  };
+};
+
+export type RunResult = {
+  status: "passed" | "failed";
+  startedAt: string;
+  finishedAt: string;
+  durationMs: number;
+  summary: {
+    stepsTotal: number;
+    stepsCompleted: number;
+  };
+  stepResults?: StepResult[];
+  failedStepIndex?: number;
+  failedStep?: Step;
+  artifacts?: {
+    screenshotPaths?: string[];
+    videoPath?: string;
+    tracePath?: string;
+  };
+  logs?: string[];
+  error?: { message: string };
+};
+
+export async function saveTestVersion(
+  currentUser: AuthUser,
+  testId: string,
+  definition: TestDefinition,
+): Promise<TestDefinition> {
+  const response = await fetch(`${API_BASE}/tests/${testId}/versions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(currentUser),
+    },
+    body: JSON.stringify(definition),
+  });
+
+  return parseResponse<TestDefinition>(response);
+}
+
+export async function runTest(
+  currentUser: AuthUser,
+  runRequest: RunRequest,
+): Promise<RunResult> {
+  const response = await fetch(`${API_BASE}/runs`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(currentUser),
+    },
+    body: JSON.stringify(runRequest),
+  });
+
+  return parseResponse<RunResult>(response);
+}
