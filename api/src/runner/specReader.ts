@@ -22,7 +22,15 @@ function safeId(value: string): string {
 }
 
 async function listSpecFiles(dir: string): Promise<string[]> {
-  const entries = await readdir(dir, { withFileTypes: true });
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
   const files: string[] = [];
 
   for (const entry of entries) {
