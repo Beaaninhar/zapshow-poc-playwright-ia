@@ -188,6 +188,10 @@ export type RunResult = {
   error?: { message: string };
 };
 
+export type PublishTestResult = {
+  path: string;
+};
+
 export async function saveTestVersion(
   currentUser: AuthUser,
   testId: string,
@@ -219,4 +223,21 @@ export async function runTest(
   });
 
   return parseResponse<RunResult>(response);
+}
+
+export async function publishTest(
+  currentUser: AuthUser,
+  testId: string,
+  runRequest: RunRequest,
+): Promise<PublishTestResult> {
+  const response = await fetch(`${API_BASE}/tests/${testId}/publish`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(currentUser),
+    },
+    body: JSON.stringify(runRequest),
+  });
+
+  return parseResponse<PublishTestResult>(response);
 }
