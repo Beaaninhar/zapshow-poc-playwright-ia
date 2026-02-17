@@ -1,4 +1,4 @@
-import { readFile, readdir } from "fs/promises";
+import { readFile, readdir, stat } from "fs/promises";
 import { join, relative } from "path";
 import type { Step } from "./types";
 
@@ -165,15 +165,16 @@ function parseSteps(source: string): { steps: Step[]; warnings: string[] } {
 }
 
 export async function readSpecsFromTestsDir(): Promise<ParsedSpec[]> {
-  const testsRoot = join(process.cwd(), "tests");
+  const testsRoot = await resolveTestsRoot();
   const files = await listSpecFiles(testsRoot);
   const parsed = await Promise.all(
     files.map(async (file) => {
       const source = await readFile(file, "utf-8");
       const { steps, warnings } = parseSteps(source);
       const name = extractTestName(source);
-      const relativePath = relative(process.cwd(), file).split("\\").join("/");
-      const id = safeId(relativePath.replace(/^tests\//, "").replace(/\.spec\.(t|j)sx?$/, ""));
+      const relativeInsideTests = relative(testsRoot, file).split("\\").join("/");
+      const relativePath = `tests/${relativeInsideTests}`;
+      const id = safeId(relativeInsideTests.replace(/\.spec\.(t|j)sx?$/, ""));
 
       return {
         id: id || safeId(name) || "imported-test",
@@ -187,4 +188,25 @@ export async function readSpecsFromTestsDir(): Promise<ParsedSpec[]> {
   );
 
   return parsed.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+async function resolveTestsRoot(): Promise<string> {
+  const cwd = process.cwd();
+  const candidates = [
+    join(cwd, "tests"),
+    join(cwd, "..", "tests"),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      const info = await stat(candidate);
+      if (info.isDirectory()) {
+        return candidate;
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+
+  return candidates[0];
 }
