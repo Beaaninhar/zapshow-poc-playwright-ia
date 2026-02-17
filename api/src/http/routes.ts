@@ -92,9 +92,16 @@ export function buildRoutes() {
 
   //  NOVO: rodar um teste (opção 1 – runner programático)
   router.post("/runs", requireMaster, async (req, res) => {
-    // Espera: { baseURL, test: { name, steps: [...] } }
-    const result = await tests.run(req.body as RunBody);
-    res.status(result.status === "passed" ? 200 : 500).json(result);
+    try {
+      // Espera: { baseURL, test: { name, steps: [...] } }
+      // Um teste pode falhar de forma esperada; o retorno HTTP deve permanecer 200
+      // para o front exibir o relatório com detalhes do passo que falhou.
+      const result = await tests.run(req.body as RunBody);
+      res.status(200).json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to run test";
+      res.status(500).json({ error: message });
+    }
   });
 
   router.post("/tests/:testId/publish", requireMaster, async (req, res) => {
