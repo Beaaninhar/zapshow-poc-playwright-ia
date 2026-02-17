@@ -254,6 +254,31 @@ export function buildTestDefinition(test: LocalTest): TestDefinition {
   };
 }
 
+export function buildLocalStepFromStep(step: Step): LocalStep {
+  switch (step.type) {
+    case "goto":
+      return { type: "goto", url: step.url };
+    case "fill":
+      return { type: "fill", selector: step.selector, value: step.value };
+    case "click":
+      return { type: "click", selector: step.selector };
+    case "expectText":
+      return { type: "expectText", selector: step.selector, text: step.text };
+    case "expectVisible":
+      return { type: "expectVisible", selector: step.selector };
+    case "waitForTimeout":
+      return { type: "waitForTimeout", ms: step.ms };
+    case "waitForSelector":
+      return { type: "waitForSelector", selector: step.selector };
+    case "hover":
+      return { type: "hover", selector: step.selector };
+    case "print":
+      return { type: "print", message: step.message };
+    case "screenshot":
+      return { type: "screenshot", name: step.name };
+  }
+}
+
 export function buildRunRequest(test: LocalTest): RunRequest {
   return {
     baseURL: test.baseURL,
