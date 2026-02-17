@@ -1,5 +1,5 @@
 import type { UserRole } from "../domain/model";
-import type { RunRequest, TestDefinition } from "../runner/types";
+import type { RunRequest, Step, TestDefinition } from "../runner/types";
 
 export type LoginBody = {
   email?: string;
@@ -29,3 +29,12 @@ export type SaveTestVersionBody = TestDefinition;
 export type RunBody = RunRequest;
 
 export type PublishTestBody = RunRequest;
+
+export type ListSpecsResponseItem = {
+  id: string;
+  name: string;
+  path: string;
+  baseURL: string;
+  steps: Step[];
+  warnings: string[];
+};

@@ -1,6 +1,22 @@
-import { mkdir, writeFile } from "fs/promises";
+import { access, mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import type { RunRequest, Step } from "./types";
+
+
+async function resolveTestsRoot(): Promise<string> {
+  const candidates = [join(process.cwd(), "tests"), join(process.cwd(), "..", "tests")];
+
+  for (const candidate of candidates) {
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {
+      // try next candidate
+    }
+  }
+
+  return candidates[0];
+}
 
 function safeName(value: string): string {
   return value
@@ -48,9 +64,10 @@ export async function writeGeneratedSpec(
   req: RunRequest,
 ): Promise<{ path: string }> {
   const fileBase = safeName(testId || req.test.name || "generated-test") || "generated-test";
-  const relativeDir = join("tests", "generated");
-  const relativePath = join(relativeDir, `${fileBase}.generated.spec.ts`);
-  const absolutePath = join(process.cwd(), relativePath);
+  const testsRoot = await resolveTestsRoot();
+  const relativeDir = "generated";
+  const relativePath = join("tests", relativeDir, `${fileBase}.generated.spec.ts`);
+  const absolutePath = join(testsRoot, relativeDir, `${fileBase}.generated.spec.ts`);
 
   const bodyLines = req.test.steps.flatMap((step) => stepToCode(step).map((line) => `  ${line}`));
   const source = [
@@ -69,7 +86,7 @@ export async function writeGeneratedSpec(
     "",
   ].join("\n");
 
-  await mkdir(join(process.cwd(), relativeDir), { recursive: true });
+  await mkdir(join(testsRoot, relativeDir), { recursive: true });
   await writeFile(absolutePath, source, "utf-8");
 
   return { path: relativePath.split("\\").join("/") };

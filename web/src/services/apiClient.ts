@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:3001";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
 export type UserRole = "MASTER" | "USER";
 
@@ -192,6 +192,16 @@ export type PublishTestResult = {
   path: string;
 };
 
+
+export type ImportableSpec = {
+  id: string;
+  name: string;
+  path: string;
+  baseURL: string;
+  steps: Step[];
+  warnings: string[];
+};
+
 export async function saveTestVersion(
   currentUser: AuthUser,
   testId: string,
@@ -240,4 +250,12 @@ export async function publishTest(
   });
 
   return parseResponse<PublishTestResult>(response);
+}
+
+export async function listSpecFiles(currentUser: AuthUser): Promise<ImportableSpec[]> {
+  const response = await fetch(`${API_BASE}/tests/spec-files`, {
+    headers: getAuthHeaders(currentUser),
+  });
+
+  return parseResponse<ImportableSpec[]>(response);
 }
