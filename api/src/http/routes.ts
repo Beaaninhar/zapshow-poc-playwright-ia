@@ -6,6 +6,7 @@ import { EventsService } from "../services/eventsService";
 import { TestsService } from "../services/testsService";
 import { createTestsRepo } from "../repos/createTestsRepo";
 import { writeGeneratedSpec } from "../runner/specWriter";
+import { readSpecsFromTestsDir } from "../runner/specReader";
 
 import type {
   LoginBody,
@@ -15,6 +16,7 @@ import type {
   RunBody,
   SaveTestVersionBody,
   PublishTestBody,
+  ListSpecsResponseItem,
 } from "./dto";
 
 
@@ -98,6 +100,11 @@ export function buildRoutes() {
   router.post("/tests/:testId/publish", requireMaster, async (req, res) => {
     const out = await writeGeneratedSpec(req.params.testId, req.body as PublishTestBody);
     res.status(201).json(out);
+  });
+
+  router.get("/tests/spec-files", requireMaster, async (_req, res) => {
+    const specs = await readSpecsFromTestsDir();
+    res.json(specs as ListSpecsResponseItem[]);
   });
 
   return router;

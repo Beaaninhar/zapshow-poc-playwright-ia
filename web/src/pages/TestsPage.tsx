@@ -28,9 +28,10 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
-import { AuthUser, runTest } from "../services/apiClient";
+import { AuthUser, ImportableSpec, listSpecFiles, runTest } from "../services/apiClient";
 import {
   buildRunRequest,
+  buildLocalStepFromStep,
   addRunReport,
   deleteLocalTest,
   loadLocalTests,
@@ -61,6 +62,9 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [deleteTarget, setDeleteTarget] = useState<LocalTest | null>(null);
   const [deleteInput, setDeleteInput] = useState("");
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importableSpecs, setImportableSpecs] = useState<ImportableSpec[]>([]);
+  const [loadingSpecs, setLoadingSpecs] = useState(false);
 
   const hasSelection = useMemo(() => selectedIds.size > 0, [selectedIds]);
   const allSelected = tests.length > 0 && selectedIds.size === tests.length;
@@ -299,6 +303,47 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
     toast.success("Test deleted");
   }
 
+
+  async function openImportDialog() {
+    setImportDialogOpen(true);
+    setLoadingSpecs(true);
+    try {
+      const specs = await listSpecFiles(currentUser);
+      setImportableSpecs(specs);
+    } catch (error) {
+      toast.error(`Failed to load /tests specs: ${formatErrorMessage(error)}`);
+      setImportDialogOpen(false);
+    } finally {
+      setLoadingSpecs(false);
+    }
+  }
+
+  function handleImportSpec(spec: ImportableSpec) {
+    const now = new Date().toISOString();
+    const imported: LocalTest = {
+      id: `${spec.id}-${Date.now()}`,
+      identifier: spec.id,
+      name: spec.name,
+      baseURL: spec.baseURL,
+      steps: spec.steps.map((step) => buildLocalStepFromStep(step)),
+      variables: {},
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const updated = upsertLocalTest(imported);
+    setTests(updated);
+    setImportDialogOpen(false);
+
+    if (spec.warnings.length > 0) {
+      toast.warn(`Imported with ${spec.warnings.length} unsupported lines.`);
+    } else {
+      toast.success(`Imported ${spec.path}`);
+    }
+
+    navigate(`/tests/${imported.id}/edit`);
+  }
+
   async function handleRunSelected() {
     const testsToRun = tests.filter((test) => selectedIds.has(test.id));
     if (!testsToRun.length) return;
@@ -382,6 +427,9 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
               onClick={() => navigate("/tests/reports")}
             >
               Reports
+            </Button>
+            <Button variant="outlined" onClick={openImportDialog}>
+              Import from /tests
             </Button>
             <Button
               variant="contained"
@@ -518,6 +566,41 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
           </TableContainer>
         )}
       </Stack>
+      <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Import tests from /tests</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1} sx={{ mt: 1 }}>
+            {loadingSpecs ? (
+              <Typography variant="body2" color="textSecondary">Loading specs...</Typography>
+            ) : importableSpecs.length === 0 ? (
+              <Typography variant="body2" color="textSecondary">No .spec files found in /tests.</Typography>
+            ) : (
+              importableSpecs.map((spec) => (
+                <Card key={spec.path} variant="outlined">
+                  <CardContent>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
+                      <Box>
+                        <Typography variant="subtitle2">{spec.name}</Typography>
+                        <Typography variant="caption" color="textSecondary">{spec.path}</Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          Steps parsed: {spec.steps.length}
+                          {spec.warnings.length > 0 ? ` • warnings: ${spec.warnings.length}` : ""}
+                        </Typography>
+                      </Box>
+                      <Button variant="contained" size="small" onClick={() => handleImportSpec(spec)}>
+                        Import
+                      </Button>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImportDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={Boolean(deleteTarget)} onClose={handleDeleteClose}>
         <DialogTitle>Delete Test</DialogTitle>
         <DialogContent>
