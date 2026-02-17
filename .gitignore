@@ -27,3 +27,7 @@ tests/test-results/
 .DS_Store
 .vscode/
 .idea/
+
+# temporary files
+*.tmp
+api/tests

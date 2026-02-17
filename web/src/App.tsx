@@ -6,6 +6,9 @@ import EventsPage from "./pages/EventsPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import UsersPage from "./pages/UsersPage";
+import TestsPage from "./pages/TestsPage";
+import CreateTestPage from "./pages/CreateTestPage";
+import ReportsPage from "./pages/ReportsPage";
 import { AuthUser } from "./services/apiClient";
 
 const STORAGE_KEY = "zapshow-user";
@@ -79,6 +82,62 @@ export default function App() {
             currentUser ? (
               isMaster ? (
                 <UsersPage currentUser={currentUser} onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/events" replace />
+              )
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/tests"
+          element={
+            currentUser ? (
+              isMaster ? (
+                <TestsPage currentUser={currentUser} onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/events" replace />
+              )
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/tests/reports"
+          element={
+            currentUser ? (
+              isMaster ? (
+                <ReportsPage />
+              ) : (
+                <Navigate to="/events" replace />
+              )
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/tests/new"
+          element={
+            currentUser ? (
+              isMaster ? (
+                <CreateTestPage currentUser={currentUser} />
+              ) : (
+                <Navigate to="/events" replace />
+              )
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          }
+        />
+        <Route
+          path="/tests/:id/edit"
+          element={
+            currentUser ? (
+              isMaster ? (
+                <CreateTestPage currentUser={currentUser} />
               ) : (
                 <Navigate to="/events" replace />
               )

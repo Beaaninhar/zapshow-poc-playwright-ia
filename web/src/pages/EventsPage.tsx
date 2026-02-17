@@ -47,9 +47,14 @@ export default function EventsPage({ currentUser, onLogout }: EventsPageProps) {
         </Typography>
         <Stack direction="row" spacing={1}>
           {currentUser.role === "MASTER" && (
-            <Button variant="outlined" onClick={() => navigate("/users")}>
-              Users
-            </Button>
+            <>
+              <Button variant="outlined" onClick={() => navigate("/users")}>
+                Users
+              </Button>
+              <Button variant="outlined" onClick={() => navigate("/tests")}>
+                Tests
+              </Button>
+            </>
           )}
           <Button variant="contained" onClick={() => navigate("/events/new")}>
             Create Event
