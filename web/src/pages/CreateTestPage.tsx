@@ -27,7 +27,14 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import { useNavigate, useParams } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
-import { AuthUser, RunResult, Step, runTest, saveTestVersion } from "../services/apiClient";
+import {
+  AuthUser,
+  RunResult,
+  Step,
+  publishTest,
+  runTest,
+  saveTestVersion,
+} from "../services/apiClient";
 import {
   ArtifactSettings,
   LocalStep,
@@ -534,6 +541,17 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
         tests: [buildReportEntry(updated, result)],
       };
       updateRunReport(reportId, () => report);
+
+      if (result.status === "passed") {
+        try {
+          const published = await publishTest(currentUser, draft.id, buildRunRequest(draft));
+          toast.success(`Spec generated: ${published.path}`);
+        } catch (publishError) {
+          toast.warn(
+            `Run passed, but failed to generate spec: ${formatErrorMessage(publishError)}`,
+          );
+        }
+      }
     } catch (error) {
       const message = formatErrorMessage(error) || "Unknown error";
       const now = new Date().toISOString();

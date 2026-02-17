@@ -5,6 +5,7 @@ import { UsersService } from "../services/userService";
 import { EventsService } from "../services/eventsService";
 import { TestsService } from "../services/testsService";
 import { createTestsRepo } from "../repos/createTestsRepo";
+import { writeGeneratedSpec } from "../runner/specWriter";
 
 import type {
   LoginBody,
@@ -13,6 +14,7 @@ import type {
   CreateEventBody,
   RunBody,
   SaveTestVersionBody,
+  PublishTestBody,
 } from "./dto";
 
 
@@ -91,6 +93,11 @@ export function buildRoutes() {
     // Espera: { baseURL, test: { name, steps: [...] } }
     const result = await tests.run(req.body as RunBody);
     res.status(result.status === "passed" ? 200 : 500).json(result);
+  });
+
+  router.post("/tests/:testId/publish", requireMaster, async (req, res) => {
+    const out = await writeGeneratedSpec(req.params.testId, req.body as PublishTestBody);
+    res.status(201).json(out);
   });
 
   return router;

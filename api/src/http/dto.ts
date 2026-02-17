@@ -27,3 +27,5 @@ export type SaveTestVersionBody = TestDefinition;
 
 // run: body é o RunRequest
 export type RunBody = RunRequest;
+
+export type PublishTestBody = RunRequest;
