@@ -192,6 +192,16 @@ export type PublishTestResult = {
   path: string;
 };
 
+
+export type ImportableSpec = {
+  id: string;
+  name: string;
+  path: string;
+  baseURL: string;
+  steps: Step[];
+  warnings: string[];
+};
+
 export async function saveTestVersion(
   currentUser: AuthUser,
   testId: string,
@@ -240,4 +250,12 @@ export async function publishTest(
   });
 
   return parseResponse<PublishTestResult>(response);
+}
+
+export async function listSpecFiles(currentUser: AuthUser): Promise<ImportableSpec[]> {
+  const response = await fetch(`${API_BASE}/tests/spec-files`, {
+    headers: getAuthHeaders(currentUser),
+  });
+
+  return parseResponse<ImportableSpec[]>(response);
 }
