@@ -14,9 +14,7 @@ export type ParsedSpec = {
 type ParseContext = {
   variables: Record<string, string>;
   locatorVars: Record<string, string>;
-  helperBodies: Record<string, string[]>;
 };
-
 
 async function resolveTestsRoot(): Promise<string> {
   const candidates = [join(process.cwd(), "tests"), join(process.cwd(), "..", "tests")];
@@ -103,14 +101,34 @@ function normalizeRegexLiteral(raw: string): string {
   return stripQuotes(trimmed);
 }
 
-function selectorFromLocatorExpression(locatorExpr: string): string | null {
+function substituteVars(raw: string, variables: Record<string, string>): string {
+  const trimmed = raw.trim();
+  if (variables[trimmed]) return variables[trimmed];
+
+  const unwrapped = stripQuotes(trimmed);
+  const replaced = unwrapped.replace(/\$\{([^}]+)\}/g, (_all, key) => {
+    const varName = key.trim();
+    return variables[varName] ?? `<${varName}>`;
+  });
+
+  if (replaced.includes("WEB_BASE_URL")) {
+    return replaced.replace(/WEB_BASE_URL/g, variables.WEB_BASE_URL ?? "http://localhost:5173");
+  }
+
+  return replaced;
+}
+
+function selectorFromLocatorExpression(
+  locatorExpr: string,
+  variables: Record<string, string>,
+): string | null {
   const text = locatorExpr.trim();
 
   const byLabel = text.match(/page\.getByLabel\((.+)\)/);
-  if (byLabel) return `label=${normalizeRegexLiteral(byLabel[1])}`;
+  if (byLabel) return `label=${substituteVars(byLabel[1], variables)}`;
 
   const byText = text.match(/page\.getByText\((.+)\)/);
-  if (byText) return `text=${normalizeRegexLiteral(byText[1])}`;
+  if (byText) return `text=${substituteVars(byText[1], variables)}`;
 
   const byRole = text.match(/page\.getByRole\((.+)\)/);
   if (byRole) {
@@ -127,20 +145,9 @@ function selectorFromLocatorExpression(locatorExpr: string): string | null {
   }
 
   const locator = text.match(/page\.locator\((.+)\)/);
-  if (locator) return stripQuotes(locator[1]);
+  if (locator) return substituteVars(locator[1], variables);
 
   return null;
-}
-
-function substituteVars(raw: string, variables: Record<string, string>): string {
-  const trimmed = raw.trim();
-  if (variables[trimmed]) return variables[trimmed];
-
-  if (trimmed.startsWith("`${") || trimmed.includes("${")) {
-    return trimmed.replace(/\$\{([^}]+)\}/g, (_all, key) => variables[key.trim()] ?? `<${key.trim()}>`);
-  }
-
-  return stripQuotes(trimmed);
 }
 
 function parseVariableAssignment(line: string, ctx: ParseContext): void {
@@ -148,7 +155,7 @@ function parseVariableAssignment(line: string, ctx: ParseContext): void {
   if (!assign) return;
   const [, name, rawValue] = assign;
 
-  const locator = selectorFromLocatorExpression(rawValue);
+  const locator = selectorFromLocatorExpression(rawValue, ctx.variables);
   if (locator) {
     ctx.locatorVars[name] = locator;
     return;
@@ -165,7 +172,7 @@ function parseVariableAssignment(line: string, ctx: ParseContext): void {
   }
 
   if (rawValue.includes("WEB_BASE_URL")) {
-    ctx.variables[name] = rawValue.replace(/\$\{?WEB_BASE_URL\}?/g, "").replace(/[`'"]/g, "").trim() || "/";
+    ctx.variables[name] = substituteVars(rawValue, ctx.variables);
     return;
   }
 
@@ -175,13 +182,12 @@ function parseVariableAssignment(line: string, ctx: ParseContext): void {
 function parseStep(line: string, ctx: ParseContext): Step | null {
   const goto = line.match(/await\s+page\.goto\((.*)\);/);
   if (goto) {
-    const substituted = substituteVars(goto[1], ctx.variables);
-    return { type: "goto", url: substituted };
+    return { type: "goto", url: substituteVars(goto[1], ctx.variables) };
   }
 
   const fillLocator = line.match(/await\s+(page\.[^\n]+)\.fill\((.+)\);/);
   if (fillLocator) {
-    const selector = selectorFromLocatorExpression(fillLocator[1]);
+    const selector = selectorFromLocatorExpression(fillLocator[1], ctx.variables);
     if (!selector) return null;
     return { type: "fill", selector, value: substituteVars(fillLocator[2], ctx.variables) };
   }
@@ -197,7 +203,7 @@ function parseStep(line: string, ctx: ParseContext): Step | null {
 
   const clickLocator = line.match(/await\s+(page\.[^\n]+)\.click\(\);/);
   if (clickLocator) {
-    const selector = selectorFromLocatorExpression(clickLocator[1]);
+    const selector = selectorFromLocatorExpression(clickLocator[1], ctx.variables);
     if (!selector) return null;
     return { type: "click", selector };
   }
@@ -207,19 +213,19 @@ function parseStep(line: string, ctx: ParseContext): Step | null {
     return { type: "click", selector: ctx.locatorVars[clickVar[1]] };
   }
 
-  const expectVisibleLocator = line.match(/await\s+expect\((page\.[^\n]+|\w+)\)\.toBeVisible\(\);/);
-  if (expectVisibleLocator) {
-    const expr = expectVisibleLocator[1];
-    const selector = ctx.locatorVars[expr] ?? selectorFromLocatorExpression(expr);
+  const expectVisible = line.match(/await\s+expect\((.+)\)\.toBeVisible\(\);/);
+  if (expectVisible) {
+    const expr = expectVisible[1].trim();
+    const selector = ctx.locatorVars[expr] ?? selectorFromLocatorExpression(expr, ctx.variables);
     if (!selector) return null;
     return { type: "expectVisible", selector };
   }
 
-  const expectTextLocator = line.match(/await\s+expect\((page\.[^\n]+)\)\.toHaveText\((.+)\);/);
-  if (expectTextLocator) {
-    const selector = selectorFromLocatorExpression(expectTextLocator[1]);
+  const expectText = line.match(/await\s+expect\((.+)\)\.toHaveText\((.+)\);/);
+  if (expectText) {
+    const selector = ctx.locatorVars[expectText[1]] ?? selectorFromLocatorExpression(expectText[1], ctx.variables);
     if (!selector) return null;
-    return { type: "expectText", selector, text: substituteVars(expectTextLocator[2], ctx.variables) };
+    return { type: "expectText", selector, text: substituteVars(expectText[2], ctx.variables) };
   }
 
   const waitTimeout = line.match(/await\s+page\.waitForTimeout\((\d+)\);/);
@@ -302,11 +308,37 @@ function inlineHelpers(lines: string[], helperBodies: Record<string, string[]>):
   return out;
 }
 
-function parseSteps(source: string, helperBodies: Record<string, string[]>): { steps: Step[]; warnings: string[] } {
-  const rawLines = source.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-  const lines = inlineHelpers(rawLines, helperBodies);
+function toStatements(lines: string[]): string[] {
+  const statements: string[] = [];
+  let current = "";
 
-  const ctx: ParseContext = { variables: {}, locatorVars: {}, helperBodies };
+  for (const line of lines) {
+    if (!line || line === "{" || line === "}") continue;
+    current = current ? `${current} ${line}` : line;
+
+    if (line.endsWith(";") || line.endsWith("{")) {
+      statements.push(current.trim());
+      current = "";
+    }
+  }
+
+  if (current.trim()) statements.push(current.trim());
+  return statements;
+}
+
+function parseSteps(
+  source: string,
+  helperBodies: Record<string, string[]>,
+  baseURL: string,
+): { steps: Step[]; warnings: string[] } {
+  const rawLines = source.split(/\r?\n/).map((line) => line.trim());
+  const inlined = inlineHelpers(rawLines, helperBodies);
+  const lines = toStatements(inlined);
+
+  const ctx: ParseContext = {
+    variables: { WEB_BASE_URL: baseURL },
+    locatorVars: {},
+  };
   const steps: Step[] = [];
   const warnings: string[] = [];
 
@@ -345,7 +377,8 @@ export async function readSpecsFromTestsDir(): Promise<ParsedSpec[]> {
     files.map(async (file) => {
       const source = await readFile(file, "utf-8");
       const helperBodies = await buildHelperBodies(source, file);
-      const { steps, warnings } = parseSteps(source, helperBodies);
+      const baseURL = extractBaseUrl(source);
+      const { steps, warnings } = parseSteps(source, helperBodies, baseURL);
       const name = extractTestName(source);
       const relativePath = join("tests", relative(testsRoot, file)).split("\\").join("/");
       const id = safeId(relativePath.replace(/^tests\//, "").replace(/\.spec\.(t|j)sx?$/, ""));
@@ -354,7 +387,7 @@ export async function readSpecsFromTestsDir(): Promise<ParsedSpec[]> {
         id: id || safeId(name) || "imported-test",
         name,
         path: relativePath,
-        baseURL: extractBaseUrl(source),
+        baseURL,
         steps,
         warnings,
       } satisfies ParsedSpec;

@@ -318,12 +318,31 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
     }
   }
 
+
+  function uniqueImportedValue(base: string, valueFor: "identifier" | "name") {
+    const normalized = base.trim() || (valueFor === "identifier" ? "imported-test" : "Imported test");
+    const taken = new Set(
+      tests.map((test) => (valueFor === "identifier" ? test.identifier : test.name).trim().toLowerCase()),
+    );
+
+    if (!taken.has(normalized.toLowerCase())) return normalized;
+
+    let counter = 2;
+    while (true) {
+      const candidate = valueFor === "identifier"
+        ? `${normalized}-imported-${counter}`
+        : `${normalized} (imported ${counter})`;
+      if (!taken.has(candidate.toLowerCase())) return candidate;
+      counter += 1;
+    }
+  }
+
   function handleImportSpec(spec: ImportableSpec) {
     const now = new Date().toISOString();
     const imported: LocalTest = {
       id: `${spec.id}-${Date.now()}`,
-      identifier: spec.id,
-      name: spec.name,
+      identifier: uniqueImportedValue(spec.id, "identifier"),
+      name: uniqueImportedValue(spec.name, "name"),
       baseURL: spec.baseURL,
       steps: spec.steps.map((step) => buildLocalStepFromStep(step)),
       variables: {},
