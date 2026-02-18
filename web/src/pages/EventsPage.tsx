@@ -35,7 +35,7 @@ export default function EventsPage({ currentUser, onLogout }: EventsPageProps) {
   }, []);
 
   return (
-    <Container maxWidth="md" sx={{ py: 6 }}>
+    <Container id="page-events" data-page-name="events-page" maxWidth="md" sx={{ py: 6 }}>
       <Stack
         direction="row"
         justifyContent="space-between"

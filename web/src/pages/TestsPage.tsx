@@ -388,7 +388,7 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container id="page-tests" data-page-name="tests-page" maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 4 }}>
         <Typography component="h1" variant="h4">
           Playwright Tests

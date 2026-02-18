@@ -42,7 +42,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   }
 
   return (
-    <Container maxWidth="sm" sx={{ py: 6 }}>
+    <Container id="page-login" data-page-name="login-page" maxWidth="sm" sx={{ py: 6 }}>
       <Typography component="h1" variant="h4" gutterBottom>
         Login
       </Typography>

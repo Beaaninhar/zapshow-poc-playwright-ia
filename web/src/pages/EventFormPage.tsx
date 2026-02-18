@@ -47,7 +47,7 @@ export default function EventFormPage({ currentUser }: EventFormPageProps) {
   }
 
   return (
-    <Container maxWidth="sm" sx={{ py: 6 }}>
+    <Container id="page-event-form" data-page-name="event-form-page" maxWidth="sm" sx={{ py: 6 }}>
       <Typography component="h1" variant="h4" gutterBottom>
         Create Event
       </Typography>

@@ -132,7 +132,7 @@ export default function UsersPage({ currentUser, onLogout }: UsersPageProps) {
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 6 }}>
+    <Container id="page-users" data-page-name="users-page" maxWidth="md" sx={{ py: 6 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography component="h1" variant="h4">
           Users
