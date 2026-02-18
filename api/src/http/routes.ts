@@ -4,7 +4,9 @@ import { getRequestRole, getRequestUserId, getRequestUserName } from "./middlewa
 import { UsersService } from "../services/userService";
 import { EventsService } from "../services/eventsService";
 import { TestsService } from "../services/testsService";
+import { JobsService } from "../services/jobsService";
 import { createTestsRepo } from "../repos/createTestsRepo";
+import { LocalJobsRepo } from "../repos/localJobsRepo";
 import { writeGeneratedSpec } from "../runner/specWriter";
 import { readSpecsFromTestsDir } from "../runner/specReader";
 
@@ -14,9 +16,11 @@ import type {
   UpdateUserBody,
   CreateEventBody,
   RunBody,
+  RunBatchBody,
   SaveTestVersionBody,
   PublishTestBody,
   ListSpecsResponseItem,
+  CreateJobBody,
 } from "./dto";
 
 
@@ -26,6 +30,7 @@ export function buildRoutes() {
   const users = new UsersService();
   const events = new EventsService();
   const tests = new TestsService(createTestsRepo());
+  const jobs = new JobsService(new LocalJobsRepo());
 
   router.get("/health", (_req, res) => res.json({ status: "ok" }));
 
@@ -104,6 +109,16 @@ export function buildRoutes() {
     }
   });
 
+  router.post("/runs/batch", requireMaster, async (req, res) => {
+    try {
+      const result = await tests.runBatch(req.body as RunBatchBody);
+      res.status(200).json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to run batch";
+      res.status(500).json({ error: message });
+    }
+  });
+
   router.post("/tests/:testId/publish", requireMaster, async (req, res) => {
     const out = await writeGeneratedSpec(req.params.testId, req.body as PublishTestBody);
     res.status(201).json(out);
@@ -112,6 +127,49 @@ export function buildRoutes() {
   router.get("/tests/spec-files", requireMaster, async (_req, res) => {
     const specs = await readSpecsFromTestsDir();
     res.json(specs as ListSpecsResponseItem[]);
+  });
+
+  // ===== JOBS ENDPOINTS =====
+  router.post("/jobs", async (req, res) => {
+    try {
+      const body = req.body as CreateJobBody;
+      if (!body.url) return res.status(400).json({ error: "url is required" });
+      if (!body.objective) return res.status(400).json({ error: "objective is required" });
+
+      const routes = Array.isArray(body.routes)
+        ? body.routes.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+        : undefined;
+
+      const job = await jobs.createJob(body.url, body.objective, {
+        routes,
+        login: body.login,
+      });
+      res.status(201).json(job);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to create job";
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.get("/jobs/:id", async (req, res) => {
+    try {
+      const job = await jobs.getJob(req.params.id);
+      if (!job) return res.status(404).json({ error: "job not found" });
+      res.json(job);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to get job";
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.get("/jobs", async (req, res) => {
+    try {
+      const jobList = await jobs.listJobs();
+      res.json(jobList);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to list jobs";
+      res.status(500).json({ error: message });
+    }
   });
 
   return router;

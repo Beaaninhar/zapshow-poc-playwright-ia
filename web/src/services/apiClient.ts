@@ -188,6 +188,25 @@ export type RunResult = {
   error?: { message: string };
 };
 
+export type BatchRunRequest = {
+  baseURL: string;
+  tests: TestDefinition[];
+  sharedSteps?: Step[];
+  artifacts?: RunRequest["artifacts"];
+};
+
+export type BatchRunResult = {
+  status: "passed" | "failed";
+  startedAt: string;
+  finishedAt: string;
+  durationMs: number;
+  results: Array<{
+    test: TestDefinition;
+    result: RunResult;
+  }>;
+  error?: { message: string };
+};
+
 export type PublishTestResult = {
   path: string;
 };
@@ -200,6 +219,52 @@ export type ImportableSpec = {
   baseURL: string;
   steps: Step[];
   warnings: string[];
+};
+
+export type JobStatus = "pending" | "running" | "planner" | "generator" | "healer" | "completed" | "failed";
+
+export type JobPhase = {
+  name: string;
+  percentage: number;
+  logs: string[];
+};
+
+export type Job = {
+  id: string;
+  url: string;
+  objective: string;
+  routes?: string[];
+  login?: {
+    url?: string;
+    username?: string;
+    password?: string;
+    usernameSelector?: string;
+    passwordSelector?: string;
+    submitSelector?: string;
+  };
+  status: JobStatus;
+  phase: JobPhase;
+  createdAt: string;
+  updatedAt: string;
+  artifacts?: {
+    testPlan?: string;
+    tests?: Array<TestDefinition & { baseURL: string }>;
+  };
+  error?: string;
+};
+
+export type CreateJobPayload = {
+  url: string;
+  objective: string;
+  routes?: string[];
+  login?: {
+    url?: string;
+    username?: string;
+    password?: string;
+    usernameSelector?: string;
+    passwordSelector?: string;
+    submitSelector?: string;
+  };
 };
 
 export async function saveTestVersion(
@@ -235,6 +300,22 @@ export async function runTest(
   return parseResponse<RunResult>(response);
 }
 
+export async function runTestsBatch(
+  currentUser: AuthUser,
+  runRequest: BatchRunRequest,
+): Promise<BatchRunResult> {
+  const response = await fetch(`${API_BASE}/runs/batch`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(currentUser),
+    },
+    body: JSON.stringify(runRequest),
+  });
+
+  return parseResponse<BatchRunResult>(response);
+}
+
 export async function publishTest(
   currentUser: AuthUser,
   testId: string,
@@ -258,4 +339,31 @@ export async function listSpecFiles(currentUser: AuthUser): Promise<ImportableSp
   });
 
   return parseResponse<ImportableSpec[]>(response);
+}
+
+export async function createJob(
+  currentUser: AuthUser,
+  payload: CreateJobPayload,
+): Promise<Job> {
+  const response = await fetch(`${API_BASE}/jobs`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(currentUser),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  return parseResponse<Job>(response);
+}
+
+export async function getJob(
+  currentUser: AuthUser,
+  jobId: string,
+): Promise<Job> {
+  const response = await fetch(`${API_BASE}/jobs/${jobId}`, {
+    headers: getAuthHeaders(currentUser),
+  });
+
+  return parseResponse<Job>(response);
 }
