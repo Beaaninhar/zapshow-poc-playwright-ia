@@ -218,3 +218,5 @@ npx playwright test
 # Abrir Playwright UI (modo interativo)
 npx playwright test --ui
 ```
+
+Por padrão, a suíte está configurada para gravar **vídeo em todos os testes** para exibição no relatório HTML do Playwright.

@@ -36,7 +36,7 @@ const parseVideo = (v?: string): VideoMode => {
     case "on-first-retry":
       return v as VideoMode;
     default:
-      return FAST ? "off" : "retain-on-failure";
+      return "on";
   }
 };
 
