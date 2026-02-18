@@ -164,7 +164,6 @@ export async function execute(
 
     await page.close().catch(() => undefined);
     await context.close().catch(() => undefined);
-    await browser.close().catch(() => undefined);
 
     if (pageVideo) {
       videoPath = await pageVideo.path().catch(() => undefined);
@@ -177,6 +176,8 @@ export async function execute(
         videoPath = undefined;
       }
     }
+
+    await browser.close().catch(() => undefined);
   }
 
   const finishedAt = new Date().toISOString();
@@ -384,7 +385,6 @@ export async function executeBatch(
   } finally {
     await page.close().catch(() => undefined);
     await context.close().catch(() => undefined);
-    await browser.close().catch(() => undefined);
 
     if (pageVideo) {
       videoPath = await pageVideo.path().catch(() => undefined);
@@ -397,6 +397,8 @@ export async function executeBatch(
         videoPath = undefined;
       }
     }
+
+    await browser.close().catch(() => undefined);
   }
 
   const resultsWithVideo = videoPath
