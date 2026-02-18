@@ -28,7 +28,7 @@ import {
 } from "../services/localTests";
 import type { Step } from "../services/apiClient";
 import { formatErrorMessage } from "../services/errorUtils";
-import { getFileName, toFileUrl } from "../services/fileUtils";
+import { getFileName, toArtifactUrl } from "../services/fileUtils";
 
 function formatDate(value: string | undefined) {
   if (!value) return "-";
@@ -116,7 +116,7 @@ export default function ReportsPage() {
   const [viewerPath, setViewerPath] = useState<string | null>(null);
   const [viewerLabel, setViewerLabel] = useState<string>("");
 
-  const viewerUrl = useMemo(() => (viewerPath ? toFileUrl(viewerPath) : ""), [viewerPath]);
+  const viewerUrl = useMemo(() => (viewerPath ? toArtifactUrl(viewerPath) : ""), [viewerPath]);
 
   useEffect(() => {
     const refresh = () => setReports(loadRunReports());
@@ -236,7 +236,7 @@ export default function ReportsPage() {
                         </Typography>
                       )}
                       {entry.artifacts?.screenshotPaths?.length ? (
-                        <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                        <Stack spacing={1} sx={{ mt: 0.5 }}>
                           <Typography variant="body2" color="textSecondary">
                             Screenshots:
                           </Typography>
@@ -252,6 +252,18 @@ export default function ReportsPage() {
                               </Button>
                             ))}
                           </Stack>
+                          <Stack direction="row" spacing={1} flexWrap="wrap">
+                            {entry.artifacts.screenshotPaths.map((path) => (
+                              <Box
+                                key={`${path}-thumb`}
+                                component="img"
+                                src={toArtifactUrl(path)}
+                                alt={getFileName(path)}
+                                sx={{ width: 160, borderRadius: 1, cursor: "pointer", border: "1px solid", borderColor: "divider" }}
+                                onClick={() => openViewer(path)}
+                              />
+                            ))}
+                          </Stack>
                         </Stack>
                       ) : null}
                       {entry.artifacts?.tracePath && (
@@ -260,9 +272,17 @@ export default function ReportsPage() {
                         </Typography>
                       )}
                       {entry.artifacts?.videoPath && (
-                        <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
-                          Video: {getFileName(entry.artifacts.videoPath)}
-                        </Typography>
+                        <Stack spacing={0.5} sx={{ mt: 0.5 }}>
+                          <Typography variant="body2" color="textSecondary">
+                            Video: {getFileName(entry.artifacts.videoPath)}
+                          </Typography>
+                          <Box
+                            component="video"
+                            controls
+                            src={toArtifactUrl(entry.artifacts.videoPath)}
+                            sx={{ width: "100%", maxWidth: 560, borderRadius: 1, border: "1px solid", borderColor: "divider" }}
+                          />
+                        </Stack>
                       )}
                       {entry.stepResults?.length ? (
                         <Accordion sx={{ mt: 1 }}>

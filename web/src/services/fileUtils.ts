@@ -4,11 +4,10 @@ export function getFileName(filePath: string): string {
   return parts[parts.length - 1] || filePath;
 }
 
+export function toArtifactUrl(filePath: string): string {
+  return `/api/artifacts?path=${encodeURIComponent(filePath)}`;
+}
+
 export function toFileUrl(filePath: string): string {
-  const normalized = filePath.replace(/\\/g, "/");
-  const encoded = normalized
-    .split("/")
-    .map((segment) => encodeURIComponent(segment))
-    .join("/");
-  return `file:///${encoded}`;
+  return toArtifactUrl(filePath);
 }

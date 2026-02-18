@@ -552,6 +552,11 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
         baseURL: testsToRun[0]?.baseURL || jobUrl,
         tests: testsToRun.map((test) => buildTestDefinition(test)),
         sharedSteps,
+        artifacts: {
+          screenshot: "on",
+          video: "on",
+          trace: "retain-on-failure",
+        },
       });
 
       if (!result.results.length) {
