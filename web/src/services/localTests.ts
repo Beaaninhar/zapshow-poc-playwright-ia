@@ -283,7 +283,11 @@ export function buildRunRequest(test: LocalTest): RunRequest {
   return {
     baseURL: test.baseURL,
     test: buildTestDefinition(test),
-    artifacts: test.artifacts,
+    artifacts: {
+      screenshot: test.artifacts?.screenshot ?? "on",
+      video: test.artifacts?.video ?? "on",
+      trace: test.artifacts?.trace ?? "retain-on-failure",
+    },
   };
 }
 

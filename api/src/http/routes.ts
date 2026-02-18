@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { resolve, sep } from "path";
 import { requireMaster } from "./middleware/requireMaster";
 import { getRequestRole, getRequestUserId, getRequestUserName } from "./middleware/userContext";
 import { UsersService } from "../services/userService";
@@ -26,6 +27,12 @@ import type {
 
 export function buildRoutes() {
   const router = Router();
+  const localRunsRoot = resolve(process.cwd(), "tests", "test-results", "local-runs");
+
+  function isWithinLocalRuns(targetPath: string): boolean {
+    const normalizedRoot = `${localRunsRoot}${sep}`;
+    return targetPath === localRunsRoot || targetPath.startsWith(normalizedRoot);
+  }
 
   const users = new UsersService();
   const events = new EventsService();
@@ -33,6 +40,26 @@ export function buildRoutes() {
   const jobs = new JobsService(new LocalJobsRepo());
 
   router.get("/health", (_req, res) => res.json({ status: "ok" }));
+
+  router.get("/artifacts", async (req, res) => {
+    const value = req.query.path;
+    if (typeof value !== "string" || !value.trim()) {
+      return res.status(400).json({ error: "path query parameter is required" });
+    }
+
+    const resolvedPath = resolve(value);
+    if (!isWithinLocalRuns(resolvedPath)) {
+      return res.status(403).json({ error: "artifact path is not allowed" });
+    }
+
+    return res.sendFile(resolvedPath, (error) => {
+      if (error) {
+        if (!res.headersSent) {
+          res.status(404).json({ error: "artifact not found" });
+        }
+      }
+    });
+  });
 
   router.post("/login", (req, res) => {
     const body = req.body as LoginBody;

@@ -337,11 +337,16 @@ export async function executeBatch(
   const outputDir = join(process.cwd(), "tests", "test-results", "local-runs", runId);
   await mkdir(outputDir, { recursive: true });
 
+  const videoMode = batch.artifacts?.video ?? "off";
   const browser = await chromium.launch();
-  const context = await browser.newContext();
+  const context = await browser.newContext(
+    videoMode !== "off" ? { recordVideo: { dir: join(outputDir, "video") } } : undefined,
+  );
   const page = await context.newPage();
+  const pageVideo = page.video();
   const results: BatchRunResult["results"] = [];
   let status: "passed" | "failed" = "passed";
+  let videoPath: string | undefined;
 
   try {
     if (batch.sharedActions && batch.sharedActions.length) {
@@ -380,13 +385,38 @@ export async function executeBatch(
     await page.close().catch(() => undefined);
     await context.close().catch(() => undefined);
     await browser.close().catch(() => undefined);
+
+    if (pageVideo) {
+      videoPath = await pageVideo.path().catch(() => undefined);
+      const shouldKeepVideo =
+        videoMode === "on" ||
+        (videoMode === "retain-on-failure" && status === "failed") ||
+        (videoMode === "on-first-retry" && status === "failed");
+      if (!shouldKeepVideo && videoPath) {
+        await rm(videoPath, { force: true });
+        videoPath = undefined;
+      }
+    }
   }
+
+  const resultsWithVideo = videoPath
+    ? results.map((item) => ({
+        ...item,
+        result: {
+          ...item.result,
+          artifacts: {
+            ...item.result.artifacts,
+            videoPath,
+          },
+        },
+      }))
+    : results;
 
   return {
     status,
     startedAt,
     finishedAt: new Date().toISOString(),
     durationMs: Date.now() - startedMs,
-    results,
+    results: resultsWithVideo,
   };
 }
