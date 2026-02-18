@@ -115,6 +115,7 @@ export default function ReportsPage() {
   const [reports, setReports] = useState<RunReport[]>([]);
   const [viewerPath, setViewerPath] = useState<string | null>(null);
   const [viewerLabel, setViewerLabel] = useState<string>("");
+  const [viewerType, setViewerType] = useState<"image" | "video">("image");
 
   const viewerUrl = useMemo(() => (viewerPath ? toArtifactUrl(viewerPath) : ""), [viewerPath]);
 
@@ -136,9 +137,15 @@ export default function ReportsPage() {
     return () => window.clearInterval(interval);
   }, []);
 
-  function openViewer(path: string) {
+  function openViewer(path: string, type: "image" | "video" = "image") {
     setViewerPath(path);
     setViewerLabel(getFileName(path));
+    setViewerType(type);
+  }
+
+  function closeViewer() {
+    setViewerPath(null);
+    setViewerType("image");
   }
 
   return (
@@ -276,12 +283,18 @@ export default function ReportsPage() {
                           <Typography variant="body2" color="textSecondary">
                             Video: {getFileName(entry.artifacts.videoPath)}
                           </Typography>
-                          <Box
-                            component="video"
-                            controls
-                            src={toArtifactUrl(entry.artifacts.videoPath)}
-                            sx={{ width: "100%", maxWidth: 560, borderRadius: 1, border: "1px solid", borderColor: "divider" }}
-                          />
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            sx={{ width: "fit-content" }}
+                            onClick={() => {
+                              const { videoPath } = entry.artifacts ?? {};
+                              if (!videoPath) return;
+                              openViewer(videoPath, "video");
+                            }}
+                          >
+                            Open video
+                          </Button>
                         </Stack>
                       )}
                       {entry.stepResults?.length ? (
@@ -337,20 +350,29 @@ export default function ReportsPage() {
           ))}
         </Stack>
       )}
-      <Dialog open={Boolean(viewerPath)} onClose={() => setViewerPath(null)} maxWidth="md" fullWidth>
-        <DialogTitle>{viewerLabel || "Screenshot"}</DialogTitle>
+      <Dialog open={Boolean(viewerPath)} onClose={closeViewer} maxWidth="md" fullWidth>
+        <DialogTitle>{viewerLabel || "Artifact"}</DialogTitle>
         <DialogContent>
           {viewerUrl ? (
-            <Box
-              component="img"
-              src={viewerUrl}
-              alt={viewerLabel}
-              sx={{ width: "100%", borderRadius: 1 }}
-            />
+            viewerType === "video" ? (
+              <Box
+                component="video"
+                controls
+                src={viewerUrl}
+                sx={{ width: "100%", borderRadius: 1 }}
+              />
+            ) : (
+              <Box
+                component="img"
+                src={viewerUrl}
+                alt={viewerLabel}
+                sx={{ width: "100%", borderRadius: 1 }}
+              />
+            )
           ) : null}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setViewerPath(null)}>Close</Button>
+          <Button onClick={closeViewer}>Close</Button>
         </DialogActions>
       </Dialog>
     </Container>
