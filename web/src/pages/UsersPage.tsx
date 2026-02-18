@@ -158,25 +158,28 @@ export default function UsersPage({ currentUser, onLogout }: UsersPageProps) {
         mb={3}
       >
         <TextField
+          id="users-create-name"
           label="Name"
           {...createForm.register("name")}
           error={Boolean(createForm.formState.errors.name)}
           helperText={createForm.formState.errors.name?.message}
         />
         <TextField
+          id="users-create-email"
           label="Email"
           {...createForm.register("email")}
           error={Boolean(createForm.formState.errors.email)}
           helperText={createForm.formState.errors.email?.message}
         />
         <TextField
+          id="users-create-password"
           label="Password"
           type="password"
           {...createForm.register("password")}
           error={Boolean(createForm.formState.errors.password)}
           helperText={createForm.formState.errors.password?.message}
         />
-        <TextField select label="Role" defaultValue="USER" {...createForm.register("role")}>
+        <TextField id="users-create-role" select label="Role" defaultValue="USER" {...createForm.register("role")}>
           <MenuItem value="USER">USER</MenuItem>
           <MenuItem value="MASTER">MASTER</MenuItem>
         </TextField>
@@ -212,25 +215,28 @@ export default function UsersPage({ currentUser, onLogout }: UsersPageProps) {
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
+              id="users-edit-name"
               label="Name"
               {...editForm.register("name")}
               error={Boolean(editForm.formState.errors.name)}
               helperText={editForm.formState.errors.name?.message}
             />
             <TextField
+              id="users-edit-email"
               label="Email"
               {...editForm.register("email")}
               error={Boolean(editForm.formState.errors.email)}
               helperText={editForm.formState.errors.email?.message}
             />
             <TextField
+              id="users-edit-password"
               label="Password"
               type="password"
               {...editForm.register("password")}
               error={Boolean(editForm.formState.errors.password)}
               helperText={editForm.formState.errors.password?.message}
             />
-            <TextField select label="Role" defaultValue="USER" {...editForm.register("role")}>
+            <TextField id="users-edit-role" select label="Role" defaultValue="USER" {...editForm.register("role")}>
               <MenuItem value="USER">USER</MenuItem>
               <MenuItem value="MASTER">MASTER</MenuItem>
             </TextField>

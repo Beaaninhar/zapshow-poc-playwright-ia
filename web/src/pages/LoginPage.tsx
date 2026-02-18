@@ -48,6 +48,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       </Typography>
       <Stack component="form" spacing={2} onSubmit={handleSubmit(onSubmit)}>
         <TextField
+          id="login-email"
           label="Email"
           type="email"
           {...register("email")}
@@ -55,6 +56,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           helperText={errors.email?.message}
         />
         <TextField
+          id="login-password"
           label="Password"
           type="password"
           {...register("password")}

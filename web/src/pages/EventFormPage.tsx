@@ -54,18 +54,21 @@ export default function EventFormPage({ currentUser }: EventFormPageProps) {
 
       <Stack component="form" spacing={2} onSubmit={handleSubmit(onSubmit)}>
         <TextField
+          id="event-title"
           label="Title"
           {...register("title")}
           error={Boolean(errors.title)}
           helperText={errors.title?.message}
         />
         <TextField
+          id="event-description"
           label="Description"
           {...register("description")}
           error={Boolean(errors.description)}
           helperText={errors.description?.message}
         />
         <TextField
+          id="event-date"
           label="Date"
           type="date"
           InputLabelProps={{ shrink: true }}
@@ -74,6 +77,7 @@ export default function EventFormPage({ currentUser }: EventFormPageProps) {
           helperText={errors.date?.message}
         />
         <TextField
+          id="event-price"
           label="Price"
           type="number"
           inputProps={{ min: 0.01, step: 0.01 }}

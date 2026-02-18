@@ -51,12 +51,14 @@ export default function RegisterPage() {
       </Typography>
       <Stack component="form" spacing={2} onSubmit={handleSubmit(onSubmit)}>
         <TextField
+          id="register-name"
           label="Name"
           {...register("name")}
           error={Boolean(errors.name)}
           helperText={errors.name?.message}
         />
         <TextField
+          id="register-email"
           label="Email"
           type="email"
           {...register("email")}
@@ -64,6 +66,7 @@ export default function RegisterPage() {
           helperText={errors.email?.message}
         />
         <TextField
+          id="register-password"
           label="Password"
           type="password"
           {...register("password")}
