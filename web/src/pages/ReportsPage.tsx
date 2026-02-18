@@ -142,7 +142,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container id="page-reports" data-page-name="reports-page" maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 4 }}>
         <Typography component="h1" variant="h4">
           Test Run Reports

@@ -45,7 +45,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <Container maxWidth="sm" sx={{ py: 6 }}>
+    <Container id="page-register" data-page-name="register-page" maxWidth="sm" sx={{ py: 6 }}>
       <Typography component="h1" variant="h4" gutterBottom>
         Create Account
       </Typography>

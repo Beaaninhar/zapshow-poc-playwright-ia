@@ -652,7 +652,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container id="page-create-test" data-page-name="create-test-page" maxWidth="lg" sx={{ py: 4 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography component="h1" variant="h4">
           {isEdit ? "Edit Playwright Test" : "Create Playwright Test"}
