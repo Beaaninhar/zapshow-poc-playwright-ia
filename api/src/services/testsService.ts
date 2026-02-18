@@ -1,7 +1,7 @@
 import type { TestsRepo } from "../repos/testsRepo";
-import type { RunRequest, TestDefinition } from "../runner/types";
+import type { RunRequest, TestDefinition, BatchRunRequest, BatchRunResult } from "../runner/types";
 import { compile } from "../runner/compiler";
-import { execute } from "../runner/executor";
+import { execute, executeBatch } from "../runner/executor";
 
 const WORKERS = Math.max(1, Number(process.env.E2E_WORKERS ?? 1));
 let activeRuns = 0;
@@ -39,5 +39,16 @@ export class TestsService {
   async run(req: RunRequest) {
     const { baseURL, actions } = compile(req);
     return enqueueRun(() => execute(actions, baseURL, req.artifacts));
+  }
+
+  async runBatch(req: BatchRunRequest): Promise<BatchRunResult> {
+    const tests = req.tests.map((test) => ({
+      test,
+      actions: compile({ baseURL: req.baseURL, test }).actions,
+    }));
+    const sharedActions = req.sharedSteps?.length
+      ? compile({ baseURL: req.baseURL, test: { name: "shared", steps: req.sharedSteps } }).actions
+      : undefined;
+    return enqueueRun(() => executeBatch({ baseURL: req.baseURL, tests, sharedActions, artifacts: req.artifacts }));
   }
 }

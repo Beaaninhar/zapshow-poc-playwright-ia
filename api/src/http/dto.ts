@@ -1,5 +1,5 @@
 import type { UserRole } from "../domain/model";
-import type { RunRequest, Step, TestDefinition } from "../runner/types";
+import type { RunRequest, Step, TestDefinition, BatchRunRequest } from "../runner/types";
 
 export type LoginBody = {
   email?: string;
@@ -28,6 +28,9 @@ export type SaveTestVersionBody = TestDefinition;
 // run: body é o RunRequest
 export type RunBody = RunRequest;
 
+// run batch: body é o BatchRunRequest
+export type RunBatchBody = BatchRunRequest;
+
 export type PublishTestBody = RunRequest;
 
 export type ListSpecsResponseItem = {
@@ -37,4 +40,23 @@ export type ListSpecsResponseItem = {
   baseURL: string;
   steps: Step[];
   warnings: string[];
+};
+
+// Jobs
+export type CreateJobBody = {
+  url?: string;
+  objective?: string;
+  routes?: string[];
+  login?: {
+    url?: string;
+    username?: string;
+    password?: string;
+    usernameSelector?: string;
+    passwordSelector?: string;
+    submitSelector?: string;
+  };
+};
+
+export type GetJobArtifactQuery = {
+  type?: "testPlan" | "specs" | "zip";
 };

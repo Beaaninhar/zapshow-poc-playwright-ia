@@ -33,6 +33,46 @@ export type RunRequest = {
   };
 };
 
+export type RunResult = {
+  status: "passed" | "failed";
+  startedAt: string;
+  finishedAt: string;
+  durationMs: number;
+  summary: {
+    stepsTotal: number;
+    stepsCompleted: number;
+  };
+  stepResults?: StepResult[];
+  failedStepIndex?: number;
+  failedStep?: Step;
+  artifacts?: {
+    screenshotPaths?: string[];
+    videoPath?: string;
+    tracePath?: string;
+  };
+  logs?: string[];
+  error?: { message: string };
+};
+
+export type BatchRunRequest = {
+  baseURL: string;
+  tests: TestDefinition[];
+  sharedSteps?: Step[];
+  artifacts?: RunRequest["artifacts"];
+};
+
+export type BatchRunResult = {
+  status: "passed" | "failed";
+  startedAt: string;
+  finishedAt: string;
+  durationMs: number;
+  results: Array<{
+    test: TestDefinition;
+    result: RunResult;
+  }>;
+  error?: { message: string };
+};
+
 export type RunError = {
   message: string;
   failedStepIndex?: number;
