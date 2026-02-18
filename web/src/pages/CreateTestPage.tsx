@@ -672,6 +672,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
           <CardContent>
             <Stack spacing={2}>
               <TextField
+                id="create-test-name"
                 label="Test Name"
                 fullWidth
                 value={testName}
@@ -679,6 +680,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                 placeholder="e.g., Login and Create Event"
               />
               <TextField
+                id="create-test-identifier"
                 label="Identifier"
                 fullWidth
                 value={identifier}
@@ -691,6 +693,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
               />
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
                 <TextField
+                  id="create-test-base-url"
                   label="Base URL"
                   fullWidth
                   value={baseURL}
@@ -716,6 +719,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                       <FormControl fullWidth size="small">
                         <InputLabel>Screenshot</InputLabel>
                         <Select
+                          id="create-test-artifacts-screenshot"
                           value={artifacts.screenshot ?? "only-on-failure"}
                           onChange={(e) =>
                             setArtifacts((prev) => ({
@@ -733,6 +737,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                       <FormControl fullWidth size="small">
                         <InputLabel>Video</InputLabel>
                         <Select
+                          id="create-test-artifacts-video"
                           value={artifacts.video ?? "off"}
                           onChange={(e) =>
                             setArtifacts((prev) => ({
@@ -751,6 +756,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                       <FormControl fullWidth size="small">
                         <InputLabel>Trace</InputLabel>
                         <Select
+                          id="create-test-artifacts-trace"
                           value={artifacts.trace ?? "off"}
                           onChange={(e) =>
                             setArtifacts((prev) => ({
@@ -787,6 +793,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                 <Grid container spacing={2} key={variable.id} alignItems="center">
                   <Grid item xs={12} sm={4}>
                     <TextField
+                      id={`create-test-variable-${index}-name`}
                       fullWidth
                       size="small"
                       label="Name"
@@ -797,6 +804,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <TextField
+                      id={`create-test-variable-${index}-value`}
                       fullWidth
                       size="small"
                       label="Value"
@@ -841,6 +849,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                       <FormControl fullWidth size="small">
                         <InputLabel>Type</InputLabel>
                         <Select
+                          id={`create-test-step-${index}-type`}
                           value={step.type}
                           onChange={(e) =>
                             setStepType(index, e.target.value as LocalStep["type"])
@@ -871,6 +880,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                         <FormControl fullWidth size="small">
                           <InputLabel>Selector Type</InputLabel>
                           <Select
+                            id={`create-test-step-${index}-selector-type`}
                             value={step.selectorType ?? "css"}
                             onChange={(e) =>
                               updateStep(index, { selectorType: e.target.value as SelectorType })
@@ -895,6 +905,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                       step.type === "hover") && (
                       <Grid item xs={12} sm={5}>
                         <TextField
+                          id={`create-test-step-${index}-selector`}
                           fullWidth
                           size="small"
                           label="Selector"
@@ -911,6 +922,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                           <FormControl fullWidth size="small">
                             <InputLabel>URL Source</InputLabel>
                             <Select
+                              id={`create-test-step-${index}-url-source`}
                               value={step.urlSource ?? "literal"}
                               onChange={(e) =>
                                 updateStep(index, { urlSource: e.target.value as ValueSource })
@@ -929,6 +941,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                             <FormControl fullWidth size="small">
                               <InputLabel>Variable</InputLabel>
                               <Select
+                                id={`create-test-step-${index}-url-variable`}
                                 value={step.urlVar ?? ""}
                                 onChange={(e) => updateStep(index, { urlVar: e.target.value })}
                                 label="Variable"
@@ -944,6 +957,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                         ) : (
                           <Grid item xs={12} sm={6}>
                             <TextField
+                              id={`create-test-step-${index}-url`}
                               fullWidth
                               size="small"
                               label="URL"
@@ -962,6 +976,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                           <FormControl fullWidth size="small">
                             <InputLabel>Value Source</InputLabel>
                             <Select
+                              id={`create-test-step-${index}-value-source`}
                               value={step.valueSource ?? "literal"}
                               onChange={(e) =>
                                 updateStep(index, { valueSource: e.target.value as ValueSource })
@@ -980,6 +995,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                             <FormControl fullWidth size="small">
                               <InputLabel>Variable</InputLabel>
                               <Select
+                                id={`create-test-step-${index}-value-variable`}
                                 value={step.valueVar ?? ""}
                                 onChange={(e) => updateStep(index, { valueVar: e.target.value })}
                                 label="Variable"
@@ -995,6 +1011,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                         ) : (
                           <Grid item xs={12} sm={5}>
                             <TextField
+                              id={`create-test-step-${index}-value`}
                               fullWidth
                               size="small"
                               label="Value"
@@ -1013,6 +1030,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                           <FormControl fullWidth size="small">
                             <InputLabel>Text Source</InputLabel>
                             <Select
+                              id={`create-test-step-${index}-text-source`}
                               value={step.textSource ?? "literal"}
                               onChange={(e) =>
                                 updateStep(index, { textSource: e.target.value as ValueSource })
@@ -1031,6 +1049,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                             <FormControl fullWidth size="small">
                               <InputLabel>Variable</InputLabel>
                               <Select
+                                id={`create-test-step-${index}-text-variable`}
                                 value={step.textVar ?? ""}
                                 onChange={(e) => updateStep(index, { textVar: e.target.value })}
                                 label="Variable"
@@ -1046,6 +1065,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                         ) : (
                           <Grid item xs={12} sm={5}>
                             <TextField
+                              id={`create-test-step-${index}-expected-text`}
                               fullWidth
                               size="small"
                               label="Expected Text"
@@ -1061,6 +1081,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                     {step.type === "waitForTimeout" && (
                       <Grid item xs={12} sm={6}>
                         <TextField
+                          id={`create-test-step-${index}-milliseconds`}
                           fullWidth
                           size="small"
                           label="Milliseconds"
@@ -1077,6 +1098,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                     {step.type === "print" && (
                       <Grid item xs={12} sm={6}>
                         <TextField
+                          id={`create-test-step-${index}-message`}
                           fullWidth
                           size="small"
                           label="Message"
@@ -1090,6 +1112,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                     {step.type === "screenshot" && (
                       <Grid item xs={12} sm={6}>
                         <TextField
+                          id={`create-test-step-${index}-screenshot-name`}
                           fullWidth
                           size="small"
                           label="Screenshot Name"

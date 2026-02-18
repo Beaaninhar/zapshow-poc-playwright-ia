@@ -612,6 +612,7 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
               {deleteTarget?.identifier || deleteTarget?.name}
             </Typography>
             <TextField
+              id="tests-delete-identifier"
               label="Identifier"
               value={deleteInput}
               onChange={(e) => setDeleteInput(e.target.value)}
