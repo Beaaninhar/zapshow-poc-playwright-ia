@@ -57,7 +57,8 @@ const FAST = envBool("E2E_FAST", false);
 
 export default defineConfig({
   testDir: join(__dirname, "tests"),
-  outputDir: join(__dirname, "tests", "test-results"),
+  outputDir: join(__dirname, "test-results"),
+  preserveOutput: "always",
 
   fullyParallel: true,
   workers: envNum("E2E_WORKERS", process.env.CI ? 2 : undefined),
@@ -67,7 +68,7 @@ export default defineConfig({
   expect: { timeout: envNum("E2E_EXPECT_TIMEOUT_MS", 5_000) },
 
   reporter: envBool("E2E_HTML_REPORT", !FAST)
-    ? [["html", { outputFolder: join(__dirname, "tests", "playwright-report"), open: "never" }], ["list"]]
+    ? [["html", { outputFolder: join(__dirname, "playwright-report"), open: "never" }], ["list"]]
     : [["list"]],
 
   use: {
