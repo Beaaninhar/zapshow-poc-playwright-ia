@@ -162,6 +162,36 @@ function isStepValid(step: LocalStep): boolean {
       return step.message.trim().length > 0;
     case "screenshot":
       return true;
+    case "apiRequest": {
+      const hasUrl =
+        step.urlSource === "variable" ? Boolean(step.urlVar) : step.url.trim().length > 0;
+      if (!hasUrl) return false;
+      if (step.bodySource === "variable" && !step.bodyVar) return false;
+      if (
+        step.expectedStatus !== undefined &&
+        (!Number.isFinite(step.expectedStatus) || step.expectedStatus < 100)
+      ) {
+        return false;
+      }
+      if (step.headers?.trim()) {
+        try {
+          const parsed = JSON.parse(step.headers);
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            return false;
+          }
+          if (
+            !Object.values(parsed as Record<string, unknown>).every(
+              (value) => typeof value === "string",
+            )
+          ) {
+            return false;
+          }
+        } catch {
+          return false;
+        }
+      }
+      return true;
+    }
   }
 }
 
@@ -236,6 +266,16 @@ function getDefaultStep(type: LocalStep["type"]): LocalStep {
       return { type: "print", message: "", messageSource: "literal" };
     case "screenshot":
       return { type: "screenshot", name: "" };
+    case "apiRequest":
+      return {
+        type: "apiRequest",
+        method: "GET",
+        url: "",
+        urlSource: "literal",
+        headers: "",
+        body: "",
+        bodySource: "literal",
+      };
   }
 }
 
@@ -1069,6 +1109,183 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                           placeholder="e.g., after-login"
                         />
                       </Grid>
+                    )}
+
+                    {step.type === "apiRequest" && (
+                      <>
+                        <Grid item xs={12} sm={2}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel>Método</InputLabel>
+                            <Select
+                              id={`create-test-step-${index}-api-method`}
+                              value={step.method}
+                              onChange={(e) =>
+                                updateStep(index, {
+                                  method: e.target.value as "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+                                })
+                              }
+                              label="Método"
+                            >
+                              <MenuItem value="GET">GET</MenuItem>
+                              <MenuItem value="POST">POST</MenuItem>
+                              <MenuItem value="PUT">PUT</MenuItem>
+                              <MenuItem value="PATCH">PATCH</MenuItem>
+                              <MenuItem value="DELETE">DELETE</MenuItem>
+                            </Select>
+                          </FormControl>
+                        </Grid>
+
+                        <Grid item xs={12} sm={2}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel>URL Source</InputLabel>
+                            <Select
+                              id={`create-test-step-${index}-api-url-source`}
+                              value={step.urlSource ?? "literal"}
+                              onChange={(e) =>
+                                updateStep(index, { urlSource: e.target.value as ValueSource })
+                              }
+                              label="URL Source"
+                            >
+                              <MenuItem value="literal">Literal</MenuItem>
+                              <MenuItem value="variable" disabled={!variableOptions.length}>
+                                Variable
+                              </MenuItem>
+                            </Select>
+                          </FormControl>
+                        </Grid>
+
+                        {step.urlSource === "variable" ? (
+                          <Grid item xs={12} sm={4}>
+                            <FormControl fullWidth size="small">
+                              <InputLabel>Variable</InputLabel>
+                              <Select
+                                id={`create-test-step-${index}-api-url-variable`}
+                                value={step.urlVar ?? ""}
+                                onChange={(e) => updateStep(index, { urlVar: e.target.value })}
+                                label="Variable"
+                              >
+                                {variableOptions.map((name) => (
+                                  <MenuItem key={name} value={name}>
+                                    {name}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </Grid>
+                        ) : (
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              id={`create-test-step-${index}-api-url`}
+                              fullWidth
+                              size="small"
+                              label="URL"
+                              value={step.url}
+                              onChange={(e) => updateStep(index, { url: e.target.value })}
+                              placeholder="https://api.exemplo.com/messages"
+                            />
+                          </Grid>
+                        )}
+
+                        <Grid item xs={12} sm={2}>
+                          <TextField
+                            id={`create-test-step-${index}-api-expected-status`}
+                            fullWidth
+                            size="small"
+                            label="Status esperado"
+                            type="number"
+                            inputProps={{ min: 100, max: 599 }}
+                            value={step.expectedStatus ?? ""}
+                            onChange={(e) =>
+                              updateStep(index, {
+                                expectedStatus: e.target.value
+                                  ? Number(e.target.value)
+                                  : undefined,
+                              })
+                            }
+                          />
+                        </Grid>
+
+                        <Grid item xs={12} sm={5}>
+                          <TextField
+                            id={`create-test-step-${index}-api-headers`}
+                            fullWidth
+                            size="small"
+                            label="Headers (JSON)"
+                            value={step.headers ?? ""}
+                            onChange={(e) => updateStep(index, { headers: e.target.value })}
+                            placeholder='{"Authorization":"Bearer token"}'
+                            multiline
+                            minRows={2}
+                          />
+                        </Grid>
+
+                        <Grid item xs={12} sm={2}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel>Body Source</InputLabel>
+                            <Select
+                              id={`create-test-step-${index}-api-body-source`}
+                              value={step.bodySource ?? "literal"}
+                              onChange={(e) =>
+                                updateStep(index, { bodySource: e.target.value as ValueSource })
+                              }
+                              label="Body Source"
+                            >
+                              <MenuItem value="literal">Literal</MenuItem>
+                              <MenuItem value="variable" disabled={!hasCustomVariables}>
+                                Variable
+                              </MenuItem>
+                            </Select>
+                          </FormControl>
+                        </Grid>
+
+                        {step.bodySource === "variable" ? (
+                          <Grid item xs={12} sm={5}>
+                            <FormControl fullWidth size="small">
+                              <InputLabel>Variable</InputLabel>
+                              <Select
+                                id={`create-test-step-${index}-api-body-variable`}
+                                value={step.bodyVar ?? ""}
+                                onChange={(e) => updateStep(index, { bodyVar: e.target.value })}
+                                label="Variable"
+                              >
+                                {customVariableOptions.map((name) => (
+                                  <MenuItem key={name} value={name}>
+                                    {name}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </Grid>
+                        ) : (
+                          <Grid item xs={12} sm={5}>
+                            <TextField
+                              id={`create-test-step-${index}-api-body`}
+                              fullWidth
+                              size="small"
+                              label="Body"
+                              value={step.body ?? ""}
+                              onChange={(e) => updateStep(index, { body: e.target.value })}
+                              placeholder='{"to":"qa@empresa.com","subject":"Teste"}'
+                              multiline
+                              minRows={2}
+                            />
+                          </Grid>
+                        )}
+
+                        <Grid item xs={12} sm={5}>
+                          <TextField
+                            id={`create-test-step-${index}-api-expected-body`}
+                            fullWidth
+                            size="small"
+                            label="Body deve conter"
+                            value={step.expectedBodyContains ?? ""}
+                            onChange={(e) =>
+                              updateStep(index, { expectedBodyContains: e.target.value })
+                            }
+                            placeholder="messageId"
+                          />
+                        </Grid>
+                      </>
                     )}
 
                     <Grid item xs={12} sm={1}>

@@ -74,6 +74,19 @@ export type LocalStep =
   | {
       type: "screenshot";
       name?: string;
+    }
+  | {
+      type: "apiRequest";
+      method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+      url: string;
+      urlSource?: ValueSource;
+      urlVar?: string;
+      headers?: string;
+      body?: string;
+      bodySource?: ValueSource;
+      bodyVar?: string;
+      expectedStatus?: number;
+      expectedBodyContains?: string;
     };
 
 export type LocalTest = {
@@ -249,6 +262,18 @@ export function buildTestDefinition(test: LocalTest): TestDefinition {
             type: "screenshot",
             name: step.name?.trim() || undefined,
           };
+        case "apiRequest":
+          return {
+            type: "apiRequest",
+            method: step.method,
+            url: resolveValue(step.url, step.urlSource, step.urlVar, test.variables),
+            headers: step.headers?.trim()
+              ? (JSON.parse(step.headers) as Record<string, string>)
+              : undefined,
+            body: resolveValue(step.body ?? "", step.bodySource, step.bodyVar, test.variables),
+            expectedStatus: step.expectedStatus,
+            expectedBodyContains: step.expectedBodyContains?.trim() || undefined,
+          };
       }
     }),
   };
@@ -276,6 +301,16 @@ export function buildLocalStepFromStep(step: Step): LocalStep {
       return { type: "print", message: step.message };
     case "screenshot":
       return { type: "screenshot", name: step.name };
+    case "apiRequest":
+      return {
+        type: "apiRequest",
+        method: step.method,
+        url: step.url,
+        headers: step.headers ? JSON.stringify(step.headers, null, 2) : "",
+        body: step.body ?? "",
+        expectedStatus: step.expectedStatus,
+        expectedBodyContains: step.expectedBodyContains ?? "",
+      };
   }
 }
 

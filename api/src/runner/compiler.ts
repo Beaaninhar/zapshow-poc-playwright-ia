@@ -10,7 +10,16 @@ export type Action =
   | { type: "waitForSelector"; selector: string }
   | { type: "hover"; selector: string }
   | { type: "print"; message: string }
-  | { type: "screenshot"; name?: string };
+  | { type: "screenshot"; name?: string }
+  | {
+      type: "apiRequest";
+      method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+      url: string;
+      headers?: Record<string, string>;
+      body?: string;
+      expectedStatus?: number;
+      expectedBodyContains?: string;
+    };
 
 function getUnknownType(value: unknown): string {
   if (!value || typeof value !== "object") return "unknown";
@@ -34,6 +43,7 @@ export function compile(req: RunRequest): { baseURL: string; actions: Action[] }
       case "hover":
       case "print":
       case "screenshot":
+      case "apiRequest":
         return s;
       default:
         throw new Error(`invalid step type: ${getUnknownType(s)}`);

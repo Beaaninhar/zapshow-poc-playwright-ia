@@ -12,6 +12,7 @@ export const STEP_TYPE_OPTIONS: Array<{ value: LocalStep["type"]; label: string 
   { value: "hover", label: "Passar o mouse" },
   { value: "print", label: "Imprimir mensagem" },
   { value: "screenshot", label: "Capturar screenshot" },
+  { value: "apiRequest", label: "Requisição HTTP (API)" },
 ];
 
 export function getStepTypeLabel(type: LocalStep["type"]): string {
@@ -41,6 +42,8 @@ export function summarizeRunStep(step: Step | undefined): string | null {
       return `Imprimir mensagem ${step.message}`;
     case "screenshot":
       return `Capturar screenshot ${step.name ?? ""}`;
+    case "apiRequest":
+      return `Requisição ${step.method} ${step.url}`;
   }
 }
 
@@ -66,6 +69,7 @@ export function summarizeLocalStep(step: LocalStep): string {
       return `Imprimir mensagem ${step.message}`;
     case "screenshot":
       return `Capturar screenshot ${step.name ?? ""}`;
+    case "apiRequest":
+      return `Requisição ${step.method} ${step.urlSource === "variable" ? `var:${step.urlVar ?? ""}` : step.url}`;
   }
 }
-

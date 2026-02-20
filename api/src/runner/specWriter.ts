@@ -28,7 +28,7 @@ function safeName(value: string): string {
     .replace(/^-|-$/g, "");
 }
 
-function stepToCode(step: Step): string[] {
+function stepToCode(step: Step, index: number): string[] {
   switch (step.type) {
     case "goto":
       return [`await page.goto(new URL(${JSON.stringify(step.url)}, baseURL).toString());`];
@@ -56,6 +56,32 @@ function stepToCode(step: Step): string[] {
         `await page.screenshot({ path: ${JSON.stringify(join("tests", "artifacts", name))}, fullPage: true });`,
       ];
     }
+    case "apiRequest": {
+      const responseVar = `apiResponse${index + 1}`;
+      const textVar = `apiResponseText${index + 1}`;
+      const lines = [
+        `const ${responseVar} = await fetch((/^https?:\\/\\//i.test(${JSON.stringify(step.url)}) ? ${JSON.stringify(step.url)} : new URL(${JSON.stringify(step.url)}, baseURL).toString()), ${JSON.stringify({
+          method: step.method,
+          headers: step.headers,
+          body: step.body,
+        })});`,
+      ];
+
+      if (typeof step.expectedStatus === "number") {
+        lines.push(
+          `if (${responseVar}.status !== ${step.expectedStatus}) throw new Error(\`Expected status ${step.expectedStatus}, received \${${responseVar}.status}\`);`,
+        );
+      }
+
+      if (step.expectedBodyContains) {
+        lines.push(`const ${textVar} = await ${responseVar}.text();`);
+        lines.push(
+          `if (!${textVar}.includes(${JSON.stringify(step.expectedBodyContains)})) throw new Error("Expected response body content not found");`,
+        );
+      }
+
+      return lines;
+    }
   }
 }
 
@@ -69,7 +95,9 @@ export async function writeGeneratedSpec(
   const relativePath = join("tests", relativeDir, `${fileBase}.generated.spec.ts`);
   const absolutePath = join(testsRoot, relativeDir, `${fileBase}.generated.spec.ts`);
 
-  const bodyLines = req.test.steps.flatMap((step) => stepToCode(step).map((line) => `  ${line}`));
+  const bodyLines = req.test.steps.flatMap((step, index) =>
+    stepToCode(step, index).map((line) => `  ${line}`),
+  );
   const source = [
     'import { test, expect } from "@playwright/test";',
     'import { API_BASE_URL } from "../constants";',
