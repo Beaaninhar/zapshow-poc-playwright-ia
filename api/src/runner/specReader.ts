@@ -165,15 +165,15 @@ function parseSteps(source: string): { steps: Step[]; warnings: string[] } {
 }
 
 export async function readSpecsFromTestsDir(): Promise<ParsedSpec[]> {
-  const testsRoot = await resolveTestsRoot();
-  const files = await listSpecFiles(testsRoot);
+  const specsRoot = await resolveSpecsRoot();
+  const files = await listSpecFiles(specsRoot);
   const parsed = await Promise.all(
     files.map(async (file) => {
       const source = await readFile(file, "utf-8");
       const { steps, warnings } = parseSteps(source);
       const name = extractTestName(source);
-      const relativeInsideTests = relative(testsRoot, file).split("\\").join("/");
-      const relativePath = `tests/${relativeInsideTests}`;
+      const relativeInsideTests = relative(specsRoot, file).split("\\").join("/");
+      const relativePath = `.tmp/no-code-tests/specs/${relativeInsideTests}`;
       const id = safeId(relativeInsideTests.replace(/\.spec\.(t|j)sx?$/, ""));
 
       return {
@@ -190,11 +190,12 @@ export async function readSpecsFromTestsDir(): Promise<ParsedSpec[]> {
   return parsed.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-async function resolveTestsRoot(): Promise<string> {
+async function resolveSpecsRoot(): Promise<string> {
   const cwd = process.cwd();
   const candidates = [
-    join(cwd, "tests"),
-    join(cwd, "..", "tests"),
+    join(cwd, ".tmp", "no-code-tests", "specs"),
+    join(cwd, "api", ".tmp", "no-code-tests", "specs"),
+    join(cwd, "..", ".tmp", "no-code-tests", "specs"),
   ];
 
   for (const candidate of candidates) {

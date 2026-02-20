@@ -12,5 +12,5 @@
     "types": ["vite/client", "node"],
     "noEmit": true
   },
-  "include": ["src", "playwright.config.ts"]
+  "include": ["src"]
 }

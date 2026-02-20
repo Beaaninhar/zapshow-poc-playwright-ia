@@ -438,7 +438,7 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
       const specs = await listSpecFiles(currentUser);
       setImportableSpecs(specs);
     } catch (error) {
-      toast.error(`Failed to load /tests specs: ${formatErrorMessage(error)}`);
+      toast.error(`Failed to load generated specs: ${formatErrorMessage(error)}`);
       setImportDialogOpen(false);
     } finally {
       setLoadingSpecs(false);
@@ -781,7 +781,7 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
               Reports
             </Button>
             <Button variant="outlined" onClick={openImportDialog}>
-              Import from /tests
+              Import generated specs
             </Button>
             <Button
               variant="contained"
@@ -919,13 +919,13 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
         )}
       </Stack>
       <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Import tests from /tests</DialogTitle>
+        <DialogTitle>Import generated specs</DialogTitle>
         <DialogContent>
           <Stack spacing={1} sx={{ mt: 1 }}>
             {loadingSpecs ? (
               <Typography variant="body2" color="textSecondary">Loading specs...</Typography>
             ) : importableSpecs.length === 0 ? (
-              <Typography variant="body2" color="textSecondary">No .spec files found in /tests.</Typography>
+              <Typography variant="body2" color="textSecondary">No .spec files found in .tmp/no-code-tests/specs.</Typography>
             ) : (
               importableSpecs.map((spec) => (
                 <Card key={spec.path} variant="outlined">

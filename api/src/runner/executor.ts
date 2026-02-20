@@ -107,7 +107,7 @@ export async function execute(
   const stepResults: StepResult[] = [];
 
   const runId = `${Date.now()}`;
-  const outputDir = join(process.cwd(), "tests", "test-results", "local-runs", runId);
+  const outputDir = join(process.cwd(), ".tmp", "no-code-tests", "runs", runId);
   const screenshotDir = join(outputDir, "screenshots");
   const videoDir = join(outputDir, "video");
   const traceMode = artifacts?.trace ?? "off";
@@ -398,7 +398,7 @@ export async function executeBatch(
   const startedAt = new Date().toISOString();
   const startedMs = Date.now();
   const runId = `batch-${Date.now()}`;
-  const outputDir = join(process.cwd(), "tests", "test-results", "local-runs", runId);
+  const outputDir = join(process.cwd(), ".tmp", "no-code-tests", "runs", runId);
   await mkdir(outputDir, { recursive: true });
 
   const videoMode = batch.artifacts?.video ?? "off";
