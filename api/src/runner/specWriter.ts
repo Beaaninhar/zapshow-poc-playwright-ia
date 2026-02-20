@@ -1,21 +1,10 @@
-import { access, mkdir, writeFile } from "fs/promises";
+import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import type { RunRequest, Step } from "./types";
 
 
-async function resolveTestsRoot(): Promise<string> {
-  const candidates = [join(process.cwd(), "tests"), join(process.cwd(), "..", "tests")];
-
-  for (const candidate of candidates) {
-    try {
-      await access(candidate);
-      return candidate;
-    } catch {
-      // try next candidate
-    }
-  }
-
-  return candidates[0];
+function resolveSpecsRoot(): string {
+  return join(process.cwd(), ".tmp", "no-code-tests", "specs");
 }
 
 function safeName(value: string): string {
@@ -28,7 +17,7 @@ function safeName(value: string): string {
     .replace(/^-|-$/g, "");
 }
 
-function stepToCode(step: Step): string[] {
+function stepToCode(step: Step, index: number): string[] {
   switch (step.type) {
     case "goto":
       return [`await page.goto(new URL(${JSON.stringify(step.url)}, baseURL).toString());`];
@@ -53,8 +42,34 @@ function stepToCode(step: Step): string[] {
     case "screenshot": {
       const name = step.name?.trim() ? `${safeName(step.name)}.png` : "step.png";
       return [
-        `await page.screenshot({ path: ${JSON.stringify(join("tests", "artifacts", name))}, fullPage: true });`,
+        `await page.screenshot({ path: ${JSON.stringify(join(".tmp", "no-code-tests", "artifacts", name))}, fullPage: true });`,
       ];
+    }
+    case "apiRequest": {
+      const responseVar = `apiResponse${index + 1}`;
+      const textVar = `apiResponseText${index + 1}`;
+      const lines = [
+        `const ${responseVar} = await fetch((/^https?:\\/\\//i.test(${JSON.stringify(step.url)}) ? ${JSON.stringify(step.url)} : new URL(${JSON.stringify(step.url)}, baseURL).toString()), ${JSON.stringify({
+          method: step.method,
+          headers: step.headers,
+          body: step.body,
+        })});`,
+      ];
+
+      if (typeof step.expectedStatus === "number") {
+        lines.push(
+          `if (${responseVar}.status !== ${step.expectedStatus}) throw new Error(\`Expected status ${step.expectedStatus}, received \${${responseVar}.status}\`);`,
+        );
+      }
+
+      if (step.expectedBodyContains) {
+        lines.push(`const ${textVar} = await ${responseVar}.text();`);
+        lines.push(
+          `if (!${textVar}.includes(${JSON.stringify(step.expectedBodyContains)})) throw new Error("Expected response body content not found");`,
+        );
+      }
+
+      return lines;
     }
   }
 }
@@ -64,20 +79,16 @@ export async function writeGeneratedSpec(
   req: RunRequest,
 ): Promise<{ path: string }> {
   const fileBase = safeName(testId || req.test.name || "generated-test") || "generated-test";
-  const testsRoot = await resolveTestsRoot();
+  const specsRoot = resolveSpecsRoot();
   const relativeDir = "generated";
-  const relativePath = join("tests", relativeDir, `${fileBase}.generated.spec.ts`);
-  const absolutePath = join(testsRoot, relativeDir, `${fileBase}.generated.spec.ts`);
+  const relativePath = join(".tmp", "no-code-tests", "specs", relativeDir, `${fileBase}.generated.spec.ts`);
+  const absolutePath = join(specsRoot, relativeDir, `${fileBase}.generated.spec.ts`);
 
-  const bodyLines = req.test.steps.flatMap((step) => stepToCode(step).map((line) => `  ${line}`));
+  const bodyLines = req.test.steps.flatMap((step, index) =>
+    stepToCode(step, index).map((line) => `  ${line}`),
+  );
   const source = [
     'import { test, expect } from "@playwright/test";',
-    'import { API_BASE_URL } from "../constants";',
-    "",
-    "test.beforeEach(async ({ request }) => {",
-    "  const res = await request.post(`${API_BASE_URL}/test/reset`);",
-    "  expect(res.ok()).toBeTruthy();",
-    "});",
     "",
     `test(${JSON.stringify(`${req.test.name} @generated`)}, async ({ page }) => {`,
     `  const baseURL = ${JSON.stringify(req.baseURL)};`,
@@ -86,7 +97,7 @@ export async function writeGeneratedSpec(
     "",
   ].join("\n");
 
-  await mkdir(join(testsRoot, relativeDir), { recursive: true });
+  await mkdir(join(specsRoot, relativeDir), { recursive: true });
   await writeFile(absolutePath, source, "utf-8");
 
   return { path: relativePath.split("\\").join("/") };

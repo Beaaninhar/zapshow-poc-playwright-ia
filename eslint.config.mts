@@ -7,8 +7,7 @@ export default [
       "node_modules/**",
       "dist/**",
       "build/**",
-      "playwright-report/**",
-      "test-results/**",
+      ".tmp/no-code-tests/**",
     ],
   },
 

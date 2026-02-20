@@ -6,6 +6,63 @@ import type { RunRequest, StepResult, RunResult, BatchRunResult, TestDefinition 
 
 type ArtifactOptions = RunRequest["artifacts"];
 
+function resolveRequestUrl(url: string, baseURL: string): string {
+  if (/^https?:\/\//i.test(url)) return url;
+  return new URL(url, baseURL).toString();
+}
+
+function applyDefaultJsonHeader(
+  headers: Record<string, string> | undefined,
+  body: string | undefined,
+): Record<string, string> | undefined {
+  if (!body || !body.trim()) return headers;
+  const nextHeaders = { ...(headers ?? {}) };
+  const hasContentType = Object.keys(nextHeaders).some(
+    (key) => key.toLowerCase() === "content-type",
+  );
+  const trimmedBody = body.trim();
+  if (!hasContentType && (trimmedBody.startsWith("{") || trimmedBody.startsWith("["))) {
+    nextHeaders["content-type"] = "application/json";
+  }
+  return Object.keys(nextHeaders).length ? nextHeaders : undefined;
+}
+
+async function executeApiRequestAction(
+  action: Extract<Action, { type: "apiRequest" }>,
+  baseURL: string,
+  logs: string[],
+) {
+  const targetUrl = resolveRequestUrl(action.url, baseURL);
+  const headers = applyDefaultJsonHeader(action.headers, action.body);
+  const response = await fetch(targetUrl, {
+    method: action.method,
+    headers,
+    body: action.body?.trim() ? action.body : undefined,
+  });
+
+  let responseText: string | undefined;
+  if (action.expectedBodyContains) {
+    responseText = await response.text();
+  }
+
+  logs.push(`[api] ${action.method} ${targetUrl} -> ${response.status}`);
+
+  if (action.expectedStatus !== undefined && response.status !== action.expectedStatus) {
+    throw new Error(
+      `Expected status ${action.expectedStatus}, received ${response.status} for ${action.method} ${targetUrl}`,
+    );
+  }
+
+  if (
+    action.expectedBodyContains &&
+    !(responseText ?? "").includes(action.expectedBodyContains)
+  ) {
+    throw new Error(
+      `Expected response body to contain "${action.expectedBodyContains}" for ${action.method} ${targetUrl}`,
+    );
+  }
+}
+
 function safeFileName(value: string): string {
   return value.replace(/[\\/:*?"<>|\s]+/g, "-").toLowerCase();
 }
@@ -50,7 +107,7 @@ export async function execute(
   const stepResults: StepResult[] = [];
 
   const runId = `${Date.now()}`;
-  const outputDir = join(process.cwd(), "tests", "test-results", "local-runs", runId);
+  const outputDir = join(process.cwd(), ".tmp", "no-code-tests", "runs", runId);
   const screenshotDir = join(outputDir, "screenshots");
   const videoDir = join(outputDir, "video");
   const traceMode = artifacts?.trace ?? "off";
@@ -111,6 +168,9 @@ export async function execute(
             screenshotPaths.push(path);
             break;
           }
+          case "apiRequest":
+            await executeApiRequestAction(a, baseURL, logs);
+            break;
         }
         stepResults.push({
           index: i,
@@ -264,6 +324,9 @@ async function runActionsOnPage(
           }
           break;
         }
+        case "apiRequest":
+          await executeApiRequestAction(a, baseURL, logs);
+          break;
       }
       stepResults.push({
         index: i,
@@ -335,7 +398,7 @@ export async function executeBatch(
   const startedAt = new Date().toISOString();
   const startedMs = Date.now();
   const runId = `batch-${Date.now()}`;
-  const outputDir = join(process.cwd(), "tests", "test-results", "local-runs", runId);
+  const outputDir = join(process.cwd(), ".tmp", "no-code-tests", "runs", runId);
   await mkdir(outputDir, { recursive: true });
 
   const videoMode = batch.artifacts?.video ?? "off";

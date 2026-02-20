@@ -45,18 +45,12 @@ import {
   type LocalTest,
 } from "../services/localTests";
 import { formatErrorMessage } from "../services/errorUtils";
+import { createId, formatDateTime, toSlug } from "../services/commonUtils";
 
 type TestsPageProps = {
   currentUser: AuthUser;
   onLogout: () => void;
 };
-
-function createId(prefix: string) {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}-${crypto.randomUUID()}`;
-  }
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
 
 export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
   const navigate = useNavigate();
@@ -188,19 +182,8 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
     toast.success(`Imported ${newTests.length} generated tests`);
   }, [job]);
 
-  function formatDate(value: string | undefined) {
-    if (!value) return "-";
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return value;
-    return parsed.toLocaleString();
-  }
-
   function buildIdentifier(name: string) {
-    return name
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "");
+    return toSlug(name);
   }
 
   function markRunning(test: LocalTest) {
@@ -487,7 +470,7 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
       const specs = await listSpecFiles(currentUser);
       setImportableSpecs(specs);
     } catch (error) {
-      toast.error(`Failed to load /tests specs: ${formatErrorMessage(error)}`);
+      toast.error(`Failed to load generated specs: ${formatErrorMessage(error)}`);
       setImportDialogOpen(false);
     } finally {
       setLoadingSpecs(false);
@@ -830,7 +813,7 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
               Reports
             </Button>
             <Button variant="outlined" onClick={openImportDialog}>
-              Import from /tests
+              Import generated specs
             </Button>
             <Button
               variant="contained"
@@ -904,7 +887,7 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
                     </TableCell>
                     <TableCell align="left">
                       <Typography variant="body2">
-                        {formatDate(test.updatedAt ?? test.createdAt)}
+                        {formatDateTime(test.updatedAt ?? test.createdAt)}
                       </Typography>
                     </TableCell>
                     <TableCell align="left">
@@ -922,7 +905,7 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
                             }
                           />
                           <Typography variant="body2">
-                            {formatDate(test.lastRun.finishedAt || test.lastRun.startedAt)}
+                            {formatDateTime(test.lastRun.finishedAt || test.lastRun.startedAt)}
                           </Typography>
                         </Stack>
                       ) : (
@@ -968,13 +951,13 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
         )}
       </Stack>
       <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Import tests from /tests</DialogTitle>
+        <DialogTitle>Import generated specs</DialogTitle>
         <DialogContent>
           <Stack spacing={1} sx={{ mt: 1 }}>
             {loadingSpecs ? (
               <Typography variant="body2" color="textSecondary">Loading specs...</Typography>
             ) : importableSpecs.length === 0 ? (
-              <Typography variant="body2" color="textSecondary">No .spec files found in /tests.</Typography>
+              <Typography variant="body2" color="textSecondary">No .spec files found in .tmp/no-code-tests/specs.</Typography>
             ) : (
               importableSpecs.map((spec) => (
                 <Card key={spec.path} variant="outlined">

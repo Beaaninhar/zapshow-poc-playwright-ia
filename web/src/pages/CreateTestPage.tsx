@@ -30,7 +30,6 @@ import { toast } from "react-toastify";
 import {
   AuthUser,
   RunResult,
-  Step,
   publishTest,
   runTest,
   saveTestVersion,
@@ -52,6 +51,12 @@ import {
 } from "../services/localTests";
 import { formatErrorMessage } from "../services/errorUtils";
 import { getFileName, toFileUrl } from "../services/fileUtils";
+import { createId, toSlug } from "../services/commonUtils";
+import {
+  getStepTypeLabel,
+  STEP_TYPE_OPTIONS,
+  summarizeRunStep,
+} from "../services/stepDescriptions";
 
 type CreateTestPageProps = {
   currentUser: AuthUser;
@@ -64,23 +69,14 @@ type VariableItem = {
   locked?: boolean;
 };
 
+type ValidationInput = {
+  testName: string;
+  identifier: string;
+  steps: LocalStep[];
+};
+
 const DEFAULT_BASE_URL = "http://localhost:5173";
 const BASE_VAR_NAME = "baseUrl";
-
-function createId(prefix: string) {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}-${crypto.randomUUID()}`;
-  }
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function buildSlug(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
-}
 
 function buildReportEntry(
   test: LocalTest,
@@ -122,32 +118,6 @@ function buildQueuedEntry(test: LocalTest, startedAt: string): TestRunReportEntr
     stepsTotal: test.steps.length,
     stepsCompleted: 0,
   };
-}
-
-function summarizeFailedStep(step: Step | undefined): string | null {
-  if (!step) return null;
-  switch (step.type) {
-    case "goto":
-      return `goto ${step.url}`;
-    case "fill":
-      return `fill ${step.selector} -> ${step.value}`;
-    case "click":
-      return `click ${step.selector}`;
-    case "expectText":
-      return `expect ${step.selector} text ${step.text}`;
-    case "expectVisible":
-      return `expect visible ${step.selector}`;
-    case "waitForTimeout":
-      return `wait ${step.ms}ms`;
-    case "waitForSelector":
-      return `wait for ${step.selector}`;
-    case "hover":
-      return `hover ${step.selector}`;
-    case "print":
-      return `print ${step.message}`;
-    case "screenshot":
-      return `screenshot ${step.name ?? ""}`;
-  }
 }
 
 function buildRunningEntry(test: LocalTest, startedAt: string): TestRunReportEntry {
@@ -192,7 +162,50 @@ function isStepValid(step: LocalStep): boolean {
       return step.message.trim().length > 0;
     case "screenshot":
       return true;
+    case "apiRequest": {
+      const hasUrl =
+        step.urlSource === "variable" ? Boolean(step.urlVar) : step.url.trim().length > 0;
+      if (!hasUrl) return false;
+      if (step.bodySource === "variable" && !step.bodyVar) return false;
+      if (
+        step.expectedStatus !== undefined &&
+        (!Number.isFinite(step.expectedStatus) || step.expectedStatus < 100)
+      ) {
+        return false;
+      }
+      if (step.headers?.trim()) {
+        try {
+          const parsed = JSON.parse(step.headers);
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            return false;
+          }
+          if (
+            !Object.values(parsed as Record<string, unknown>).every(
+              (value) => typeof value === "string",
+            )
+          ) {
+            return false;
+          }
+        } catch {
+          return false;
+        }
+      }
+      return true;
+    }
   }
+}
+
+function validateDraftInput(data: ValidationInput): string | null {
+  if (!data.testName.trim()) return "Nome do teste é obrigatório";
+  if (!data.identifier.trim() && !toSlug(data.testName)) {
+    return "Identificador é obrigatório";
+  }
+  if (data.steps.length === 0) return "Adicione pelo menos um passo";
+
+  const invalidIndex = data.steps.findIndex((step) => !isStepValid(step));
+  if (invalidIndex !== -1) return `Passo ${invalidIndex + 1} está incompleto`;
+
+  return null;
 }
 
 function getSnapshot(data: {
@@ -253,6 +266,16 @@ function getDefaultStep(type: LocalStep["type"]): LocalStep {
       return { type: "print", message: "", messageSource: "literal" };
     case "screenshot":
       return { type: "screenshot", name: "" };
+    case "apiRequest":
+      return {
+        type: "apiRequest",
+        method: "GET",
+        url: "",
+        urlSource: "literal",
+        headers: "",
+        body: "",
+        bodySource: "literal",
+      };
   }
 }
 
@@ -313,7 +336,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
 
     setExistingTest(stored);
     setTestName(stored.name);
-    setIdentifier(stored.identifier || buildSlug(stored.name));
+    setIdentifier(stored.identifier || toSlug(stored.name));
     setBaseURL(stored.baseURL);
     setSteps(stored.steps);
     setArtifacts(
@@ -342,7 +365,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
     testIdRef.current = stored.id;
     initialSnapshotRef.current = getSnapshot({
       name: stored.name,
-      identifier: stored.identifier || buildSlug(stored.name),
+      identifier: stored.identifier || toSlug(stored.name),
       baseURL: stored.baseURL,
       steps: stored.steps,
       variables: storedVariables,
@@ -366,7 +389,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
   useEffect(() => {
     if (identifierTouched) return;
     if (!identifier && testName.trim()) {
-      setIdentifier(buildSlug(testName));
+      setIdentifier(toSlug(testName));
     }
   }, [identifierTouched, identifier, testName]);
 
@@ -450,7 +473,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
 
     return {
       id: testId,
-      identifier: identifier.trim() || buildSlug(testName),
+      identifier: identifier.trim() || toSlug(testName),
       name: testName.trim(),
       baseURL,
       steps,
@@ -463,24 +486,9 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
   }
 
   async function handleRun() {
-    if (!testName.trim()) {
-      toast.error("Test name is required");
-      return;
-    }
-
-    if (!identifier.trim() && !buildSlug(testName)) {
-      toast.error("Identifier is required");
-      return;
-    }
-
-    if (steps.length === 0) {
-      toast.error("Add at least one step");
-      return;
-    }
-
-    const invalidIndex = steps.findIndex((step) => !isStepValid(step));
-    if (invalidIndex !== -1) {
-      toast.error(`Step ${invalidIndex + 1} is incomplete`);
+    const validationError = validateDraftInput({ testName, identifier, steps });
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
 
@@ -489,7 +497,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
     try {
       setIsRunning(true);
       if (!testIdRef.current) {
-        testIdRef.current = buildSlug(testName) || createId("test");
+        testIdRef.current = toSlug(testName) || createId("test");
       }
       const draft = buildLocalTest();
       const runningReport: RunReport = {
@@ -593,24 +601,9 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
   }
 
   async function handleSave() {
-    if (!testName.trim()) {
-      toast.error("Test name is required");
-      return;
-    }
-
-    if (!identifier.trim() && !buildSlug(testName)) {
-      toast.error("Identifier is required");
-      return;
-    }
-
-    if (steps.length === 0) {
-      toast.error("Add at least one step");
-      return;
-    }
-
-    const invalidIndex = steps.findIndex((step) => !isStepValid(step));
-    if (invalidIndex !== -1) {
-      toast.error(`Step ${invalidIndex + 1} is incomplete`);
+    const validationError = validateDraftInput({ testName, identifier, steps });
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
 
@@ -626,7 +619,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
       setIsSaving(true);
       const now = new Date().toISOString();
       if (!testIdRef.current) {
-        testIdRef.current = buildSlug(testName) || createId("test");
+        testIdRef.current = toSlug(testName) || createId("test");
       }
       const draft = buildLocalTest(now);
       const testDef = buildTestDefinition(draft);
@@ -847,25 +840,20 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                   <Grid container spacing={2} alignItems="flex-start">
                     <Grid item xs={12} sm={3}>
                       <FormControl fullWidth size="small">
-                        <InputLabel>Type</InputLabel>
+                        <InputLabel>Tipo</InputLabel>
                         <Select
                           id={`create-test-step-${index}-type`}
                           value={step.type}
                           onChange={(e) =>
                             setStepType(index, e.target.value as LocalStep["type"])
                           }
-                          label="Type"
+                          label="Tipo"
                         >
-                          <MenuItem value="goto">Navigate to URL</MenuItem>
-                          <MenuItem value="fill">Fill Input</MenuItem>
-                          <MenuItem value="click">Click Element</MenuItem>
-                          <MenuItem value="expectText">Expect Text</MenuItem>
-                          <MenuItem value="expectVisible">Expect Visible</MenuItem>
-                          <MenuItem value="waitForTimeout">Wait (ms)</MenuItem>
-                          <MenuItem value="waitForSelector">Wait for Selector</MenuItem>
-                          <MenuItem value="hover">Hover</MenuItem>
-                          <MenuItem value="print">Print</MenuItem>
-                          <MenuItem value="screenshot">Screenshot</MenuItem>
+                          {STEP_TYPE_OPTIONS.map((option) => (
+                            <MenuItem key={option.value} value={option.value}>
+                              {option.label}
+                            </MenuItem>
+                          ))}
                         </Select>
                       </FormControl>
                     </Grid>
@@ -1123,6 +1111,183 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                       </Grid>
                     )}
 
+                    {step.type === "apiRequest" && (
+                      <>
+                        <Grid item xs={12} sm={2}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel>Método</InputLabel>
+                            <Select
+                              id={`create-test-step-${index}-api-method`}
+                              value={step.method}
+                              onChange={(e) =>
+                                updateStep(index, {
+                                  method: e.target.value as "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+                                })
+                              }
+                              label="Método"
+                            >
+                              <MenuItem value="GET">GET</MenuItem>
+                              <MenuItem value="POST">POST</MenuItem>
+                              <MenuItem value="PUT">PUT</MenuItem>
+                              <MenuItem value="PATCH">PATCH</MenuItem>
+                              <MenuItem value="DELETE">DELETE</MenuItem>
+                            </Select>
+                          </FormControl>
+                        </Grid>
+
+                        <Grid item xs={12} sm={2}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel>URL Source</InputLabel>
+                            <Select
+                              id={`create-test-step-${index}-api-url-source`}
+                              value={step.urlSource ?? "literal"}
+                              onChange={(e) =>
+                                updateStep(index, { urlSource: e.target.value as ValueSource })
+                              }
+                              label="URL Source"
+                            >
+                              <MenuItem value="literal">Literal</MenuItem>
+                              <MenuItem value="variable" disabled={!variableOptions.length}>
+                                Variable
+                              </MenuItem>
+                            </Select>
+                          </FormControl>
+                        </Grid>
+
+                        {step.urlSource === "variable" ? (
+                          <Grid item xs={12} sm={4}>
+                            <FormControl fullWidth size="small">
+                              <InputLabel>Variable</InputLabel>
+                              <Select
+                                id={`create-test-step-${index}-api-url-variable`}
+                                value={step.urlVar ?? ""}
+                                onChange={(e) => updateStep(index, { urlVar: e.target.value })}
+                                label="Variable"
+                              >
+                                {variableOptions.map((name) => (
+                                  <MenuItem key={name} value={name}>
+                                    {name}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </Grid>
+                        ) : (
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              id={`create-test-step-${index}-api-url`}
+                              fullWidth
+                              size="small"
+                              label="URL"
+                              value={step.url}
+                              onChange={(e) => updateStep(index, { url: e.target.value })}
+                              placeholder="https://api.exemplo.com/messages"
+                            />
+                          </Grid>
+                        )}
+
+                        <Grid item xs={12} sm={2}>
+                          <TextField
+                            id={`create-test-step-${index}-api-expected-status`}
+                            fullWidth
+                            size="small"
+                            label="Status esperado"
+                            type="number"
+                            inputProps={{ min: 100, max: 599 }}
+                            value={step.expectedStatus ?? ""}
+                            onChange={(e) =>
+                              updateStep(index, {
+                                expectedStatus: e.target.value
+                                  ? Number(e.target.value)
+                                  : undefined,
+                              })
+                            }
+                          />
+                        </Grid>
+
+                        <Grid item xs={12} sm={5}>
+                          <TextField
+                            id={`create-test-step-${index}-api-headers`}
+                            fullWidth
+                            size="small"
+                            label="Headers (JSON)"
+                            value={step.headers ?? ""}
+                            onChange={(e) => updateStep(index, { headers: e.target.value })}
+                            placeholder='{"Authorization":"Bearer token"}'
+                            multiline
+                            minRows={2}
+                          />
+                        </Grid>
+
+                        <Grid item xs={12} sm={2}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel>Body Source</InputLabel>
+                            <Select
+                              id={`create-test-step-${index}-api-body-source`}
+                              value={step.bodySource ?? "literal"}
+                              onChange={(e) =>
+                                updateStep(index, { bodySource: e.target.value as ValueSource })
+                              }
+                              label="Body Source"
+                            >
+                              <MenuItem value="literal">Literal</MenuItem>
+                              <MenuItem value="variable" disabled={!hasCustomVariables}>
+                                Variable
+                              </MenuItem>
+                            </Select>
+                          </FormControl>
+                        </Grid>
+
+                        {step.bodySource === "variable" ? (
+                          <Grid item xs={12} sm={5}>
+                            <FormControl fullWidth size="small">
+                              <InputLabel>Variable</InputLabel>
+                              <Select
+                                id={`create-test-step-${index}-api-body-variable`}
+                                value={step.bodyVar ?? ""}
+                                onChange={(e) => updateStep(index, { bodyVar: e.target.value })}
+                                label="Variable"
+                              >
+                                {customVariableOptions.map((name) => (
+                                  <MenuItem key={name} value={name}>
+                                    {name}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </Grid>
+                        ) : (
+                          <Grid item xs={12} sm={5}>
+                            <TextField
+                              id={`create-test-step-${index}-api-body`}
+                              fullWidth
+                              size="small"
+                              label="Body"
+                              value={step.body ?? ""}
+                              onChange={(e) => updateStep(index, { body: e.target.value })}
+                              placeholder='{"to":"qa@empresa.com","subject":"Teste"}'
+                              multiline
+                              minRows={2}
+                            />
+                          </Grid>
+                        )}
+
+                        <Grid item xs={12} sm={5}>
+                          <TextField
+                            id={`create-test-step-${index}-api-expected-body`}
+                            fullWidth
+                            size="small"
+                            label="Body deve conter"
+                            value={step.expectedBodyContains ?? ""}
+                            onChange={(e) =>
+                              updateStep(index, { expectedBodyContains: e.target.value })
+                            }
+                            placeholder="messageId"
+                          />
+                        </Grid>
+                      </>
+                    )}
+
                     <Grid item xs={12} sm={1}>
                       <IconButton color="error" size="small" onClick={() => removeStep(index)}>
                         <DeleteIcon />
@@ -1171,7 +1336,9 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                 )}
                 {lastRunResult.failedStepIndex !== undefined && (
                   <Typography variant="body2" color="textSecondary">
-                    Failed step #{lastRunResult.failedStepIndex + 1}: {summarizeFailedStep(lastRunResult.failedStep) ?? "-"}
+                    Falha no passo {lastRunResult.failedStepIndex + 1}
+                    {lastRunResult.failedStep ? ` (${getStepTypeLabel(lastRunResult.failedStep.type)})` : ""}
+                    : {summarizeRunStep(lastRunResult.failedStep) ?? "-"}
                   </Typography>
                 )}
                 {lastRunResult.logs?.length ? (

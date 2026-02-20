@@ -8,7 +8,16 @@ export type Step =
   | { type: "waitForSelector"; selector: string }
   | { type: "hover"; selector: string }
   | { type: "print"; message: string }
-  | { type: "screenshot"; name?: string };
+  | { type: "screenshot"; name?: string }
+  | {
+      type: "apiRequest";
+      method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+      url: string;
+      headers?: Record<string, string>;
+      body?: string;
+      expectedStatus?: number;
+      expectedBodyContains?: string;
+    };
 
 export type TestDefinition = {
   name: string;

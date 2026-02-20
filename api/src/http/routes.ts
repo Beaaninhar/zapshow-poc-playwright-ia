@@ -28,7 +28,7 @@ import type {
 
 export function buildRoutes() {
   const router = Router();
-  const localRunsRoot = resolve(process.cwd(), "tests", "test-results", "local-runs");
+  const localRunsRoot = resolve(process.cwd(), ".tmp", "no-code-tests", "runs");
 
   function isWithinLocalRuns(targetPath: string): boolean {
     const normalizedRoot = `${localRunsRoot}${sep}`;
