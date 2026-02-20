@@ -9,6 +9,8 @@ import { JobsService } from "../services/jobsService";
 import { createTestsRepo } from "../repos/createTestsRepo";
 import { DbJobsRepo } from "../repos/dbJobsRepo";
 import { LocalJobsRepo } from "../repos/localJobsRepo";
+import { DbTestStorageRepo } from "../repos/dbTestStorageRepo";
+import { DbRunReportRepo } from "../repos/dbRunReportRepo";
 import { writeGeneratedSpec } from "../runner/specWriter";
 import { readSpecsFromTestsDir } from "../runner/specReader";
 
@@ -23,6 +25,8 @@ import type {
   PublishTestBody,
   ListSpecsResponseItem,
   CreateJobBody,
+  SaveTestBody,
+  SaveReportBody,
 } from "./dto";
 
 
@@ -42,6 +46,10 @@ export function buildRoutes() {
   // Usa DbJobsRepo se DATABASE_URL está configurado, senão LocalJobsRepo
   const jobsRepo = process.env.DATABASE_URL ? new DbJobsRepo() : new LocalJobsRepo();
   const jobs = new JobsService(jobsRepo);
+
+  // Repos para testes e relatórios (banco de dados)
+  const testStorageRepo = new DbTestStorageRepo();
+  const reportRepo = new DbRunReportRepo();
 
   router.get("/health", (_req, res) => res.json({ status: "ok" }));
 
@@ -265,6 +273,93 @@ export function buildRoutes() {
       res.json(jobList);
     } catch (error) {
       const message = error instanceof Error ? error.message : "failed to list jobs";
+      res.status(500).json({ error: message });
+    }
+  });
+
+  // ===== TESTS STORAGE ENDPOINTS (save/load from DB) =====
+  router.post("/tests/storage", requireMaster, async (req, res) => {
+    try {
+      const test = await testStorageRepo.saveTest(req.body as SaveTestBody);
+      res.status(201).json(test);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to save test";
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.get("/tests/storage", requireMaster, async (_req, res) => {
+    try {
+      const tests = await testStorageRepo.listTests();
+      res.json(tests);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to list tests";
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.get("/tests/storage/:testId", requireMaster, async (req, res) => {
+    try {
+      const test = await testStorageRepo.getTest(req.params.testId);
+      if (!test) return res.status(404).json({ error: "test not found" });
+      res.json(test);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to get test";
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.delete("/tests/storage/:testId", requireMaster, async (req, res) => {
+    try {
+      const success = await testStorageRepo.deleteTest(req.params.testId);
+      if (!success) return res.status(404).json({ error: "test not found" });
+      res.sendStatus(204);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to delete test";
+      res.status(500).json({ error: message });
+    }
+  });
+
+  // ===== REPORTS ENDPOINTS (save/load from DB) =====
+  router.post("/reports", requireMaster, async (req, res) => {
+    try {
+      const report = await reportRepo.saveReport(req.body as SaveReportBody);
+      res.status(201).json(report);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to save report";
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.get("/reports", requireMaster, async (req, res) => {
+    try {
+      const limit = req.query.limit ? Number(req.query.limit) : 50;
+      const reports = await reportRepo.listReports(limit);
+      res.json(reports);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to list reports";
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.get("/reports/:reportId", requireMaster, async (req, res) => {
+    try {
+      const report = await reportRepo.getReport(req.params.reportId);
+      if (!report) return res.status(404).json({ error: "report not found" });
+      res.json(report);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to get report";
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.delete("/reports/:reportId", requireMaster, async (req, res) => {
+    try {
+      const success = await reportRepo.deleteReport(req.params.reportId);
+      if (!success) return res.status(404).json({ error: "report not found" });
+      res.sendStatus(204);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to delete report";
       res.status(500).json({ error: message });
     }
   });

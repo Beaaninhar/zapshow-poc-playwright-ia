@@ -1,5 +1,6 @@
 import type { UserRole } from "../domain/model";
 import type { RunRequest, Step, TestDefinition, BatchRunRequest } from "../runner/types";
+import type { LocalTest, RunReport } from "../domain/testTypes";
 
 export type LoginBody = {
   email?: string;
@@ -41,6 +42,12 @@ export type ListSpecsResponseItem = {
   steps: Step[];
   warnings: string[];
 };
+
+// Tests (no-code storage)
+export type SaveTestBody = LocalTest;
+
+// Reports
+export type SaveReportBody = RunReport;
 
 // Jobs
 export type CreateJobBody = {

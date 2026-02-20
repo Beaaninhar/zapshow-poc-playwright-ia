@@ -5,6 +5,13 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seed...');
 
+  // Limpar testes e relatórios anteriores
+  console.log('🗑️  Clearing previous tests and reports...');
+  await prisma.testRun.deleteMany({});
+  await prisma.test.deleteMany({});
+  await prisma.runReport.deleteMany({});
+  console.log('✅ Tests and reports cleared');
+
   // Criar usuário MASTER padrão
   const masterUser = await prisma.user.upsert({
     where: { email: 'admin@zapshow.com' },

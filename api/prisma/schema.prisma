@@ -97,3 +97,69 @@ model TestVersion {
   @@unique([testId, version])
   @@map("test_versions")
 }
+
+model Test {
+  id          String   @id
+  identifier  String   @unique
+  name        String
+  baseURL     String
+  
+  // Stored as JSON
+  steps       String
+  variables   String   // JSON object
+  artifacts   String?  // JSON object
+  
+  // Last run info (optional)
+  lastRunStatus         String?  // "passed" | "failed" | "running" | null
+  lastRunStartedAt      DateTime?
+  lastRunFinishedAt     DateTime?
+  lastRunDurationMs     Int?
+  lastRunStepsTotal     Int?
+  lastRunStepsCompleted Int?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  runs        TestRun[]
+
+  @@map("tests")
+}
+
+model TestRun {
+  id          String   @id @default(uuid())
+  testId      String
+  test        Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
+  
+  status      String   // "passed" | "failed" | "running" | "queued"
+  startedAt   DateTime
+  finishedAt  DateTime
+  durationMs  Int      @default(0)
+  stepsTotal  Int      @default(0)
+  stepsCompleted Int   @default(0)
+  
+  // Execution details
+  stepResults String?  // JSON array of StepResult
+  errorMessage String?
+  failedStepIndex Int?
+  failedStep  String?  // JSON of Step
+  
+  // Artifacts
+  artifacts   String?  // JSON object with paths
+  logs        String?  // JSON array
+  
+  createdAt   DateTime @default(now())
+
+  @@map("test_runs")
+}
+
+model RunReport {
+  id        String   @id @default(uuid())
+  kind      String   // "single" | "batch"
+  createdAt DateTime @default(now())
+  finishedAt DateTime
+  
+  // Tests entries stored as JSON
+  tests     String   // JSON array of TestRunReportEntry
+
+  @@map("run_reports")
+}
