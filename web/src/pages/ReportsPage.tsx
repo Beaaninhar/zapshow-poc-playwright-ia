@@ -23,77 +23,19 @@ import { useNavigate } from "react-router-dom";
 import {
   loadLocalTests,
   loadRunReports,
-  type LocalStep,
   type RunReport,
 } from "../services/localTests";
-import type { Step } from "../services/apiClient";
 import { formatErrorMessage } from "../services/errorUtils";
 import { getFileName, toArtifactUrl } from "../services/fileUtils";
-
-function formatDate(value: string | undefined) {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString();
-}
-
-function summarizeStep(step: LocalStep): string {
-  switch (step.type) {
-    case "goto":
-      return `goto ${step.urlSource === "variable" ? `var:${step.urlVar ?? ""}` : step.url}`;
-    case "fill":
-      return `fill ${step.selector} -> ${step.valueSource === "variable" ? `var:${step.valueVar ?? ""}` : step.value}`;
-    case "click":
-      return `click ${step.selector}`;
-    case "expectText":
-      return `expect ${step.selector} text ${step.textSource === "variable" ? `var:${step.textVar ?? ""}` : step.text}`;
-    case "expectVisible":
-      return `expect visible ${step.selector}`;
-    case "waitForTimeout":
-      return `wait ${step.ms}ms`;
-    case "waitForSelector":
-      return `wait for ${step.selector}`;
-    case "hover":
-      return `hover ${step.selector}`;
-    case "print":
-      return `print ${step.message}`;
-    case "screenshot":
-      return `screenshot ${step.name ?? ""}`;
-  }
-}
-
-function summarizeRunStep(step: Step | undefined): string | null {
-  if (!step) return null;
-  switch (step.type) {
-    case "goto":
-      return `goto ${step.url}`;
-    case "fill":
-      return `fill ${step.selector} -> ${step.value}`;
-    case "click":
-      return `click ${step.selector}`;
-    case "expectText":
-      return `expect ${step.selector} text ${step.text}`;
-    case "expectVisible":
-      return `expect visible ${step.selector}`;
-    case "waitForTimeout":
-      return `wait ${step.ms}ms`;
-    case "waitForSelector":
-      return `wait for ${step.selector}`;
-    case "hover":
-      return `hover ${step.selector}`;
-    case "print":
-      return `print ${step.message}`;
-    case "screenshot":
-      return `screenshot ${step.name ?? ""}`;
-  }
-}
+import { formatDateTime } from "../services/commonUtils";
+import { summarizeLocalStep, summarizeRunStep } from "../services/stepDescriptions";
 
 function renderReportTestPreview(report: RunReport, testId: string) {
   const tests = loadLocalTests();
   const test = tests.find((item) => item.id === testId);
   if (!test) return null;
 
-  const previewSteps = test.steps.slice(0, 3).map(summarizeStep);
+  const previewSteps = test.steps.slice(0, 3).map(summarizeLocalStep);
   if (!previewSteps.length) return null;
 
   return (
@@ -182,10 +124,10 @@ export default function ReportsPage() {
                     color={report.kind === "batch" ? "info" : "default"}
                   />
                   <Typography variant="body2" color="textSecondary">
-                    Started: {formatDate(report.createdAt)}
+                    Started: {formatDateTime(report.createdAt)}
                   </Typography>
                   <Typography variant="body2" color="textSecondary">
-                    Finished: {formatDate(report.finishedAt)}
+                    Finished: {formatDateTime(report.finishedAt)}
                   </Typography>
                   <Typography variant="body2" color="textSecondary">
                     Tests: {report.tests.length}
@@ -219,7 +161,7 @@ export default function ReportsPage() {
                           </Typography>
                         )}
                         <Typography variant="caption" color="textSecondary">
-                          {formatDate(entry.finishedAt)}
+                          {formatDateTime(entry.finishedAt)}
                         </Typography>
                       </Stack>
                       <Stack direction="row" spacing={2} sx={{ mt: 0.5 }}>

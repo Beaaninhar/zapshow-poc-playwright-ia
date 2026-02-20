@@ -45,18 +45,12 @@ import {
   type LocalTest,
 } from "../services/localTests";
 import { formatErrorMessage } from "../services/errorUtils";
+import { createId, formatDateTime, toSlug } from "../services/commonUtils";
 
 type TestsPageProps = {
   currentUser: AuthUser;
   onLogout: () => void;
 };
-
-function createId(prefix: string) {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}-${crypto.randomUUID()}`;
-  }
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
 
 export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
   const navigate = useNavigate();
@@ -156,19 +150,8 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
     toast.success(`Imported ${newTests.length} generated tests`);
   }, [job]);
 
-  function formatDate(value: string | undefined) {
-    if (!value) return "-";
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return value;
-    return parsed.toLocaleString();
-  }
-
   function buildIdentifier(name: string) {
-    return name
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "");
+    return toSlug(name);
   }
 
   function markRunning(test: LocalTest) {
@@ -872,7 +855,7 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
                     </TableCell>
                     <TableCell align="left">
                       <Typography variant="body2">
-                        {formatDate(test.updatedAt ?? test.createdAt)}
+                        {formatDateTime(test.updatedAt ?? test.createdAt)}
                       </Typography>
                     </TableCell>
                     <TableCell align="left">
@@ -890,7 +873,7 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
                             }
                           />
                           <Typography variant="body2">
-                            {formatDate(test.lastRun.finishedAt || test.lastRun.startedAt)}
+                            {formatDateTime(test.lastRun.finishedAt || test.lastRun.startedAt)}
                           </Typography>
                         </Stack>
                       ) : (

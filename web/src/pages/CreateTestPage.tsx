@@ -30,7 +30,6 @@ import { toast } from "react-toastify";
 import {
   AuthUser,
   RunResult,
-  Step,
   publishTest,
   runTest,
   saveTestVersion,
@@ -52,6 +51,12 @@ import {
 } from "../services/localTests";
 import { formatErrorMessage } from "../services/errorUtils";
 import { getFileName, toFileUrl } from "../services/fileUtils";
+import { createId, toSlug } from "../services/commonUtils";
+import {
+  getStepTypeLabel,
+  STEP_TYPE_OPTIONS,
+  summarizeRunStep,
+} from "../services/stepDescriptions";
 
 type CreateTestPageProps = {
   currentUser: AuthUser;
@@ -64,23 +69,14 @@ type VariableItem = {
   locked?: boolean;
 };
 
+type ValidationInput = {
+  testName: string;
+  identifier: string;
+  steps: LocalStep[];
+};
+
 const DEFAULT_BASE_URL = "http://localhost:5173";
 const BASE_VAR_NAME = "baseUrl";
-
-function createId(prefix: string) {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return `${prefix}-${crypto.randomUUID()}`;
-  }
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function buildSlug(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
-}
 
 function buildReportEntry(
   test: LocalTest,
@@ -122,32 +118,6 @@ function buildQueuedEntry(test: LocalTest, startedAt: string): TestRunReportEntr
     stepsTotal: test.steps.length,
     stepsCompleted: 0,
   };
-}
-
-function summarizeFailedStep(step: Step | undefined): string | null {
-  if (!step) return null;
-  switch (step.type) {
-    case "goto":
-      return `goto ${step.url}`;
-    case "fill":
-      return `fill ${step.selector} -> ${step.value}`;
-    case "click":
-      return `click ${step.selector}`;
-    case "expectText":
-      return `expect ${step.selector} text ${step.text}`;
-    case "expectVisible":
-      return `expect visible ${step.selector}`;
-    case "waitForTimeout":
-      return `wait ${step.ms}ms`;
-    case "waitForSelector":
-      return `wait for ${step.selector}`;
-    case "hover":
-      return `hover ${step.selector}`;
-    case "print":
-      return `print ${step.message}`;
-    case "screenshot":
-      return `screenshot ${step.name ?? ""}`;
-  }
 }
 
 function buildRunningEntry(test: LocalTest, startedAt: string): TestRunReportEntry {
@@ -193,6 +163,19 @@ function isStepValid(step: LocalStep): boolean {
     case "screenshot":
       return true;
   }
+}
+
+function validateDraftInput(data: ValidationInput): string | null {
+  if (!data.testName.trim()) return "Nome do teste é obrigatório";
+  if (!data.identifier.trim() && !toSlug(data.testName)) {
+    return "Identificador é obrigatório";
+  }
+  if (data.steps.length === 0) return "Adicione pelo menos um passo";
+
+  const invalidIndex = data.steps.findIndex((step) => !isStepValid(step));
+  if (invalidIndex !== -1) return `Passo ${invalidIndex + 1} está incompleto`;
+
+  return null;
 }
 
 function getSnapshot(data: {
@@ -313,7 +296,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
 
     setExistingTest(stored);
     setTestName(stored.name);
-    setIdentifier(stored.identifier || buildSlug(stored.name));
+    setIdentifier(stored.identifier || toSlug(stored.name));
     setBaseURL(stored.baseURL);
     setSteps(stored.steps);
     setArtifacts(
@@ -342,7 +325,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
     testIdRef.current = stored.id;
     initialSnapshotRef.current = getSnapshot({
       name: stored.name,
-      identifier: stored.identifier || buildSlug(stored.name),
+      identifier: stored.identifier || toSlug(stored.name),
       baseURL: stored.baseURL,
       steps: stored.steps,
       variables: storedVariables,
@@ -366,7 +349,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
   useEffect(() => {
     if (identifierTouched) return;
     if (!identifier && testName.trim()) {
-      setIdentifier(buildSlug(testName));
+      setIdentifier(toSlug(testName));
     }
   }, [identifierTouched, identifier, testName]);
 
@@ -450,7 +433,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
 
     return {
       id: testId,
-      identifier: identifier.trim() || buildSlug(testName),
+      identifier: identifier.trim() || toSlug(testName),
       name: testName.trim(),
       baseURL,
       steps,
@@ -463,24 +446,9 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
   }
 
   async function handleRun() {
-    if (!testName.trim()) {
-      toast.error("Test name is required");
-      return;
-    }
-
-    if (!identifier.trim() && !buildSlug(testName)) {
-      toast.error("Identifier is required");
-      return;
-    }
-
-    if (steps.length === 0) {
-      toast.error("Add at least one step");
-      return;
-    }
-
-    const invalidIndex = steps.findIndex((step) => !isStepValid(step));
-    if (invalidIndex !== -1) {
-      toast.error(`Step ${invalidIndex + 1} is incomplete`);
+    const validationError = validateDraftInput({ testName, identifier, steps });
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
 
@@ -489,7 +457,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
     try {
       setIsRunning(true);
       if (!testIdRef.current) {
-        testIdRef.current = buildSlug(testName) || createId("test");
+        testIdRef.current = toSlug(testName) || createId("test");
       }
       const draft = buildLocalTest();
       const runningReport: RunReport = {
@@ -593,24 +561,9 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
   }
 
   async function handleSave() {
-    if (!testName.trim()) {
-      toast.error("Test name is required");
-      return;
-    }
-
-    if (!identifier.trim() && !buildSlug(testName)) {
-      toast.error("Identifier is required");
-      return;
-    }
-
-    if (steps.length === 0) {
-      toast.error("Add at least one step");
-      return;
-    }
-
-    const invalidIndex = steps.findIndex((step) => !isStepValid(step));
-    if (invalidIndex !== -1) {
-      toast.error(`Step ${invalidIndex + 1} is incomplete`);
+    const validationError = validateDraftInput({ testName, identifier, steps });
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
 
@@ -626,7 +579,7 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
       setIsSaving(true);
       const now = new Date().toISOString();
       if (!testIdRef.current) {
-        testIdRef.current = buildSlug(testName) || createId("test");
+        testIdRef.current = toSlug(testName) || createId("test");
       }
       const draft = buildLocalTest(now);
       const testDef = buildTestDefinition(draft);
@@ -847,25 +800,20 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                   <Grid container spacing={2} alignItems="flex-start">
                     <Grid item xs={12} sm={3}>
                       <FormControl fullWidth size="small">
-                        <InputLabel>Type</InputLabel>
+                        <InputLabel>Tipo</InputLabel>
                         <Select
                           id={`create-test-step-${index}-type`}
                           value={step.type}
                           onChange={(e) =>
                             setStepType(index, e.target.value as LocalStep["type"])
                           }
-                          label="Type"
+                          label="Tipo"
                         >
-                          <MenuItem value="goto">Navigate to URL</MenuItem>
-                          <MenuItem value="fill">Fill Input</MenuItem>
-                          <MenuItem value="click">Click Element</MenuItem>
-                          <MenuItem value="expectText">Expect Text</MenuItem>
-                          <MenuItem value="expectVisible">Expect Visible</MenuItem>
-                          <MenuItem value="waitForTimeout">Wait (ms)</MenuItem>
-                          <MenuItem value="waitForSelector">Wait for Selector</MenuItem>
-                          <MenuItem value="hover">Hover</MenuItem>
-                          <MenuItem value="print">Print</MenuItem>
-                          <MenuItem value="screenshot">Screenshot</MenuItem>
+                          {STEP_TYPE_OPTIONS.map((option) => (
+                            <MenuItem key={option.value} value={option.value}>
+                              {option.label}
+                            </MenuItem>
+                          ))}
                         </Select>
                       </FormControl>
                     </Grid>
@@ -1171,7 +1119,9 @@ export default function CreateTestPage({ currentUser }: CreateTestPageProps) {
                 )}
                 {lastRunResult.failedStepIndex !== undefined && (
                   <Typography variant="body2" color="textSecondary">
-                    Failed step #{lastRunResult.failedStepIndex + 1}: {summarizeFailedStep(lastRunResult.failedStep) ?? "-"}
+                    Falha no passo {lastRunResult.failedStepIndex + 1}
+                    {lastRunResult.failedStep ? ` (${getStepTypeLabel(lastRunResult.failedStep.type)})` : ""}
+                    : {summarizeRunStep(lastRunResult.failedStep) ?? "-"}
                   </Typography>
                 )}
                 {lastRunResult.logs?.length ? (
