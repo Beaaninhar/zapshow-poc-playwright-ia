@@ -7,6 +7,7 @@ import { EventsService } from "../services/eventsService";
 import { TestsService } from "../services/testsService";
 import { JobsService } from "../services/jobsService";
 import { createTestsRepo } from "../repos/createTestsRepo";
+import { DbJobsRepo } from "../repos/dbJobsRepo";
 import { LocalJobsRepo } from "../repos/localJobsRepo";
 import { writeGeneratedSpec } from "../runner/specWriter";
 import { readSpecsFromTestsDir } from "../runner/specReader";
@@ -37,7 +38,10 @@ export function buildRoutes() {
   const users = new UsersService();
   const events = new EventsService();
   const tests = new TestsService(createTestsRepo());
-  const jobs = new JobsService(new LocalJobsRepo());
+  
+  // Usa DbJobsRepo se DATABASE_URL está configurado, senão LocalJobsRepo
+  const jobsRepo = process.env.DATABASE_URL ? new DbJobsRepo() : new LocalJobsRepo();
+  const jobs = new JobsService(jobsRepo);
 
   router.get("/health", (_req, res) => res.json({ status: "ok" }));
 
@@ -61,65 +65,111 @@ export function buildRoutes() {
     });
   });
 
-  router.post("/login", (req, res) => {
-    const body = req.body as LoginBody;
-    const user = users.login(body?.email, body?.password);
-    if (!user) return res.status(401).json({ error: "invalid credentials" });
-    return res.json(user);
+  router.post("/login", async (req, res) => {
+    try {
+      const body = req.body as LoginBody;
+      const user = await users.login(body?.email, body?.password);
+      if (!user) return res.status(401).json({ error: "invalid credentials" });
+      return res.json(user);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "login failed";
+      res.status(500).json({ error: message });
+    }
   });
 
-  router.post("/users", (req, res) => {
-    const out = users.create(req.body as CreateUserBody);
-    return res.status(out.status).json(out.data);
+  router.post("/users", async (req, res) => {
+    try {
+      const out = await users.create(req.body as CreateUserBody);
+      return res.status(out.status).json(out.data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to create user";
+      res.status(500).json({ error: message });
+    }
   });
 
-  router.get("/users", requireMaster, (req, res) => {
-    const list = users.listWithEventCount((userId) => events.countByUserId(userId));
-    res.json(list);
+  router.get("/users", requireMaster, async (req, res) => {
+    try {
+      const list = await users.listWithEventCount(async (userId) => await events.countByUserId(userId));
+      res.json(list);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to list users";
+      res.status(500).json({ error: message });
+    }
   });
 
-  router.put("/users/:id", requireMaster, (req, res) => {
-    const out = users.update(Number(req.params.id), req.body as UpdateUserBody);
-    return res.status(out.status).json(out.data);
+  router.put("/users/:id", requireMaster, async (req, res) => {
+    try {
+      const out = await users.update(Number(req.params.id), req.body as UpdateUserBody);
+      return res.status(out.status).json(out.data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to update user";
+      res.status(500).json({ error: message });
+    }
   });
 
-  router.delete("/users/:id", requireMaster, (req, res) => {
-    const id = Number(req.params.id);
-    const out = users.delete(id);
-    if (out.status !== 204) return res.status(out.status).json(out.data);
+  router.delete("/users/:id", requireMaster, async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      const out = await users.delete(id);
+      if (out.status !== 204) return res.status(out.status).json(out.data);
 
-    events.deleteByUserId(id);
-    return res.sendStatus(204);
+      await events.deleteByUserId(id);
+      return res.sendStatus(204);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to delete user";
+      res.status(500).json({ error: message });
+    }
   });
 
-  router.get("/events", (req, res) => {
-    const role = getRequestRole(req);
-    const userId = getRequestUserId(req);
+  router.get("/events", async (req, res) => {
+    try {
+      const role = getRequestRole(req);
+      const userId = getRequestUserId(req);
 
-    if (!role || !userId) return res.status(401).json({ error: "missing user context" });
-    return res.json(events.list(role, userId));
+      if (!role || !userId) return res.status(401).json({ error: "missing user context" });
+      const eventsList = await events.list(role, userId);
+      return res.json(eventsList);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to list events";
+      res.status(500).json({ error: message });
+    }
   });
 
-  router.post("/events", (req, res) => {
-    const out = events.create({
-      role: getRequestRole(req),
-      userId: getRequestUserId(req),
-      userName: getRequestUserName(req),
-      body: req.body as CreateEventBody,
-    });
-    return res.status(out.status).json(out.data);
+  router.post("/events", async (req, res) => {
+    try {
+      const out = await events.create({
+        role: getRequestRole(req),
+        userId: getRequestUserId(req),
+        userName: getRequestUserName(req),
+        body: req.body as CreateEventBody,
+      });
+      return res.status(out.status).json(out.data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to create event";
+      res.status(500).json({ error: message });
+    }
   });
 
-  router.post("/test/reset", (_req, res) => {
-    users.reset();
-    events.reset();
-    res.sendStatus(200);
+  router.post("/test/reset", async (_req, res) => {
+    try {
+      await users.reset();
+      await events.reset();
+      res.sendStatus(200);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to reset";
+      res.status(500).json({ error: message });
+    }
   });
 
   //  NOVO: salvar versão do teste (no-code)
   router.post("/tests/:testId/versions", requireMaster, async (req, res) => {
-    const saved = await tests.saveVersion(req.params.testId, req.body as SaveTestVersionBody);
-    res.status(201).json(saved);
+    try {
+      const saved = await tests.saveVersion(req.params.testId, req.body as SaveTestVersionBody);
+      res.status(201).json(saved);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to save test version";
+      res.status(500).json({ error: message });
+    }
   });
 
   //  NOVO: rodar um teste (opção 1 – runner programático)
@@ -147,13 +197,33 @@ export function buildRoutes() {
   });
 
   router.post("/tests/:testId/publish", requireMaster, async (req, res) => {
-    const out = await writeGeneratedSpec(req.params.testId, req.body as PublishTestBody);
-    res.status(201).json(out);
+    try {
+      const out = await writeGeneratedSpec(req.params.testId, req.body as PublishTestBody);
+      res.status(201).json(out);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to publish test";
+      res.status(500).json({ error: message });
+    }
   });
 
   router.get("/tests/spec-files", requireMaster, async (_req, res) => {
-    const specs = await readSpecsFromTestsDir();
-    res.json(specs as ListSpecsResponseItem[]);
+    try {
+      const specs = await readSpecsFromTestsDir();
+      res.json(specs as ListSpecsResponseItem[]);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to read spec files";
+      res.status(500).json({ error: message });
+    }
+  });
+
+  router.get("/tests", requireMaster, async (_req, res) => {
+    try {
+      const list = await tests.listLatest();
+      res.json(list);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "failed to list tests";
+      res.status(500).json({ error: message });
+    }
   });
 
   // ===== JOBS ENDPOINTS =====

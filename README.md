@@ -3,9 +3,36 @@
 Proof of Concept (PoC) de automação E2E utilizando **Playwright (TypeScript)** em um mini-projeto com arquitetura semelhante ao ZapShow:
 
 - Front-end: **React + Vite + Material UI**
-- API mock: **Node.js + Express + TypeScript**
+- API: **Node.js + Express + TypeScript + Prisma + PostgreSQL**
 - Testes E2E: **Playwright**
 - Objetivo estratégico: Demonstrar como automação + IA (Copilot/OpenAI) aceleram desenvolvimento e validação de front-end.
+
+---
+
+## ⚡ Quick Start - Setup em 2 Comandos
+
+### Requisitos
+- Node.js 18+
+- Docker Desktop rodando
+
+### Setup Automatizado
+
+```bash
+# 1. Instalar dependências (já gera Prisma Client)
+cd api
+npm install
+
+# 2. Rodar tudo (Docker + Migrations + Seed + Servidor)
+npm run dev
+```
+
+**Pronto!** A API estará em `http://localhost:3001`
+
+📘 **Guia detalhado:** [QUICKSTART.md](QUICKSTART.md) | [AUTOMACAO.md](AUTOMACAO.md)
+
+**Credenciais padrão:**
+- Master: `admin@zapshow.com` / `admin123`
+- User: `user@zapshow.com` / `user123`
 
 ---
 
@@ -93,70 +120,154 @@ zapshow-poc-playwright-ia/
 # 🛠 Tecnologias
 
 ### Front-end
-
 - React
 - Vite
 - Material UI
 - React Router
 - React Hook Form + Zod
 
-### Back-end (Mock)
-
-- Node.js
-- Express
-- TypeScript
+### Back-end
+- Node.js + Express + TypeScript
+- **Prisma ORM**
+- **PostgreSQL** (via Docker)
+- Repository Pattern
+- Async/await em todas as rotas
 
 ### Testes
-
 - Playwright
 - TypeScript
+
+### DevOps
+- Docker & Docker Compose
+- Scripts automatizados de setup
+- Migrations versionadas (Prisma)
 
 ---
 
 # 📦 Pré-requisitos
 
-- Node.js **18.19+** (recomendado Node 20)
+- Node.js **18+** (recomendado Node 20)
+- **Docker Desktop** (para PostgreSQL)
 - npm
 
 ---
 
 # ▶️ Como Rodar o Projeto
 
-### Setup inicial
+## 🚀 Opção 1: Desenvolvimento Automatizado (Recomendado)
+
+### API com automação completa
 
 ```bash
-# Instalar dependências (monorepo workspace)
-npm install
+# 1. Instalar dependências
+cd api
+npm install  # Já gera Prisma Client automaticamente
 
-# Rodar API + Web simultaneamente
+# 2. Rodar tudo (Docker + DB + Migrations + Seed + Servidor)
+npm run dev  # Faz tudo automaticamente!
+```
+
+**O `npm run dev` faz:**
+1. ✅ Sobe PostgreSQL com Docker
+2. ✅ Aguarda banco ficar pronto
+3. ✅ Aplica migrations
+4. ✅ Popula banco (seed)
+5. ✅ Inicia servidor em watch mode
+
+### Web (front-end)
+
+```bash
+# Em outro terminal
+cd web
+npm install
 npm run dev
 ```
 
 **Saídas esperadas:**
-
 - 🔵 API rodando em http://localhost:3001
 - 🟢 Web rodando em http://localhost:5173
+- 🗄️ PostgreSQL em localhost:5432
 
-### Scripts principais
+## 🐳 Opção 2: Docker Compose Completo
 
-| Script                     | Descrição                        |
-| -------------------------- | -------------------------------- |
-| `npm run dev`              | Inicia API + Web em paralelo     |
-| `npm run dev:api`          | Inicia apenas a API              |
-| `npm run dev:web`          | Inicia apenas o Web              |
-| `npx playwright test`      | Executa todos os testes E2E      |
-| `npx playwright test --ui` | Abre Playwright UI com os testes |
+```bash
+# Na raiz do projeto
+docker-compose up -d
+
+# Acesse:
+# API: http://localhost:3001
+# Web: http://localhost:5173
+```
+
+## 🔧 Opção 3: Setup Manual
+
+### Setup inicial (raiz do projeto)
+
+```bash
+# Instalar dependências do monorepo
+npm install
+```
+
+### API
+
+```bash
+cd api
+npm install
+
+# Subir apenas PostgreSQL
+cd ..
+docker-compose up -d db
+
+# Aplicar migrations
+cd api
+npm run prisma:deploy
+
+# Popular banco
+npm run prisma:seed
+
+# Iniciar servidor
+npm run dev:server
+```
+
+### Web
+
+```bash
+cd web
+npm install
+npm run dev
+```
 
 ---
 
-# 🔐 Usuários padrão para login
+### Scripts principais
 
-| Perfil | Nome | Email                | Senha    |
-| ------ | ---- | -------------------- | -------- |
-| MASTER | Ana  | `qa_ana@empresa.com` | `123456` |
-| MASTER | João | `qa_joao@empresa.com`| `123456` |
+| Script                     | Descrição                                 |
+| -------------------------- | ----------------------------------------- |
+| `npm run dev` *(raiz)*     | Inicia API + Web em paralelo (legacy)     |
+| `cd api && npm run dev`    | **Setup automático + API** ⚡             |
+| `cd web && npm run dev`    | Inicia apenas o Web                       |
+| `npm run dev:api` *(raiz)* | Inicia apenas a API (sem automação)       |
+| `npm run dev:web` *(raiz)* | Inicia apenas o Web                       |
+| `npx playwright test`      | Executa todos os testes E2E               |
+| `npx playwright test --ui` | Abre Playwright UI com os testes          |
 
-> Você também pode criar novos usuários pela tela de registro (`/register`) ou, como MASTER, pelo módulo `/users`.
+---
+
+# 🔐 Usuários padrão (Seed)
+
+| Perfil | Email                    | Senha      |
+| ------ | ------------------------ | ---------- |
+| MASTER | `admin@zapshow.com`      | `admin123` |
+| USER   | `user@zapshow.com`       | `user123`  |
+
+**Legado (ainda funciona):**
+
+| Perfil | Nome | Email                   | Senha    |
+| ------ | ---- | ----------------------- | -------- |
+| MASTER | Ana  | `qa_ana@empresa.com`    | `123456` |
+| MASTER | João | `qa_joao@empresa.com`   | `123456` |
+
+> Você pode criar novos usuários pela tela de registro (`/register`) ou, como MASTER, pelo módulo `/users`.
 
 ---
 

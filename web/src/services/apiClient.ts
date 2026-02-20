@@ -221,6 +221,14 @@ export type ImportableSpec = {
   warnings: string[];
 };
 
+export type DbTestVersion = {
+  testId: string;
+  version: number;
+  definition: TestDefinition & { baseURL?: string };
+  createdAt: string;
+  storage: "db" | "local";
+};
+
 export type JobStatus = "pending" | "running" | "planner" | "generator" | "healer" | "completed" | "failed";
 
 export type JobPhase = {
@@ -339,6 +347,14 @@ export async function listSpecFiles(currentUser: AuthUser): Promise<ImportableSp
   });
 
   return parseResponse<ImportableSpec[]>(response);
+}
+
+export async function listDbTests(currentUser: AuthUser): Promise<DbTestVersion[]> {
+  const response = await fetch(`${API_BASE}/tests`, {
+    headers: getAuthHeaders(currentUser),
+  });
+
+  return parseResponse<DbTestVersion[]>(response);
 }
 
 export async function createJob(

@@ -1,0 +1,99 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  MASTER
+  USER
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  events    Event[]
+
+  @@map("users")
+}
+
+model Event {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  date        String
+  price       Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  createdByUserId Int
+  createdByName   String
+  
+  user        User     @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@map("events")
+}
+
+enum JobStatus {
+  pending
+  running
+  planner
+  generator
+  healer
+  completed
+  failed
+}
+
+model Job {
+  id         String    @id @default(uuid())
+  url        String
+  objective  String
+  routes     String[]  @default([])
+  status     JobStatus @default(pending)
+  
+  // Phase info stored as JSON
+  phaseName       String  @default("initializing")
+  phasePercentage Int     @default(0)
+  phaseLogs       String[] @default([])
+  
+  // Login info stored as JSON
+  loginUrl            String?
+  loginUsername       String?
+  loginPassword       String?
+  loginUsernameSelector String?
+  loginPasswordSelector String?
+  loginSubmitSelector   String?
+  
+  // Artifacts stored as JSON
+  testPlanArtifact String?  // JSON string
+  testsArtifact    String?  // JSON string
+  
+  error      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("jobs")
+}
+
+model TestVersion {
+  id         Int      @id @default(autoincrement())
+  testId     String
+  version    Int
+  definition String   // JSON string of TestDefinition
+  createdAt  DateTime @default(now())
+  
+  @@unique([testId, version])
+  @@map("test_versions")
+}

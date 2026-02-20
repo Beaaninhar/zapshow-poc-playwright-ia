@@ -171,7 +171,7 @@ export async function readSpecsFromTestsDir(): Promise<ParsedSpec[]> {
     files.map(async (file) => {
       const source = await readFile(file, "utf-8");
       const { steps, warnings } = parseSteps(source);
-      const name = extractTestName(source);
+      const name = extractTestName(source) || "Imported test";
       const relativeInsideTests = relative(testsRoot, file).split("\\").join("/");
       const relativePath = `tests/${relativeInsideTests}`;
       const id = safeId(relativeInsideTests.replace(/\.spec\.(t|j)sx?$/, ""));

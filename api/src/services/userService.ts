@@ -1,29 +1,33 @@
+import { prisma } from "../lib/prisma";
+import { UserRole as PrismaUserRole } from "@prisma/client";
 import type { CreateUserBody, UpdateUserBody } from "../http/dto";
-import type { User, UserRole } from "../domain/model";
-
-const initialUsers: User[] = [
-  { id: 1, name: "Ana",  email: "qa_ana@empresa.com",  password: "123456", role: "MASTER" },
-  { id: 2, name: "João", email: "qa_joao@empresa.com", password: "123456", role: "MASTER" },
-];
+import type { UserRole } from "../domain/model";
 
 export class UsersService {
-  private users: User[] = [...initialUsers];
-  private nextUserId = 3;
-
-  reset() {
-    this.users = [...initialUsers];
-    this.nextUserId = 3;
+  async reset() {
+    // Delete all users and events (cascade will handle events)
+    await prisma.user.deleteMany();
   }
 
-  login(email: unknown, password: unknown) {
+  async login(email: unknown, password: unknown) {
     const e = String(email ?? "").toLowerCase();
     const p = String(password ?? "");
-    const user = this.users.find(u => u.email === e && u.password === p);
-    if (!user) return null;
-    return { id: user.id, name: user.name, email: user.email, role: user.role };
+    
+    const user = await prisma.user.findUnique({
+      where: { email: e },
+    });
+
+    if (!user || user.password !== p) return null;
+    
+    return { 
+      id: user.id, 
+      name: user.name, 
+      email: user.email, 
+      role: user.role as UserRole 
+    };
   }
 
-  create(body: CreateUserBody) {
+  async create(body: CreateUserBody) {
     const { name, email, password, role } = body || {};
 
     if (!name || !email || !password) {
@@ -31,21 +35,25 @@ export class UsersService {
     }
 
     const normalizedEmail = String(email).toLowerCase();
-    if (this.users.some(u => u.email === normalizedEmail)) {
+    
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (existingUser) {
       return { status: 409 as const, data: { error: "email already exists" } };
     }
 
-    const userRole: UserRole = role === "MASTER" ? "MASTER" : "USER";
+    const userRole: PrismaUserRole = role === "MASTER" ? PrismaUserRole.MASTER : PrismaUserRole.USER;
 
-    const user: User = {
-      id: this.nextUserId++,
-      name: String(name),
-      email: normalizedEmail,
-      password: String(password),
-      role: userRole,
-    };
-
-    this.users.push(user);
+    const user = await prisma.user.create({
+      data: {
+        name: String(name),
+        email: normalizedEmail,
+        password: String(password),
+        role: userRole,
+      },
+    });
 
     return {
       status: 201 as const,
@@ -53,19 +61,27 @@ export class UsersService {
     };
   }
 
-  listWithEventCount(getCount: (userId: number) => number) {
-    return this.users.map(u => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      role: u.role,
-      eventsCount: getCount(u.id),
-    }));
+  async listWithEventCount(getCount: (userId: number) => Promise<number>) {
+    const users = await prisma.user.findMany({
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const usersWithCount = await Promise.all(
+      users.map(async (u) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role as UserRole,
+        eventsCount: await getCount(u.id),
+      }))
+    );
+
+    return usersWithCount;
   }
 
-  update(id: number, body: UpdateUserBody) {
-    const index = this.users.findIndex(u => u.id === id);
-    if (index < 0) return { status: 404 as const, data: { error: "user not found" } };
+  async update(id: number, body: UpdateUserBody) {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return { status: 404 as const, data: { error: "user not found" } };
 
     const { name, email, password, role } = body || {};
     if (!name || !email || !password) {
@@ -73,29 +89,45 @@ export class UsersService {
     }
 
     const normalizedEmail = String(email).toLowerCase();
-    const duplicate = this.users.some(u => u.email === normalizedEmail && u.id !== id);
-    if (duplicate) return { status: 409 as const, data: { error: "email already exists" } };
+    
+    const duplicate = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
 
-    const currentRole = this.users[index].role;
-    this.users[index] = {
-      ...this.users[index],
-      name: String(name),
-      email: normalizedEmail,
-      password: String(password),
-      role: currentRole === "MASTER" ? "MASTER" : role === "MASTER" ? "MASTER" : "USER",
+    if (duplicate && duplicate.id !== id) {
+      return { status: 409 as const, data: { error: "email already exists" } };
+    }
+
+    const currentRole = user.role;
+    const newRole = currentRole === PrismaUserRole.MASTER 
+      ? PrismaUserRole.MASTER 
+      : role === "MASTER" ? PrismaUserRole.MASTER : PrismaUserRole.USER;
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        name: String(name),
+        email: normalizedEmail,
+        password: String(password),
+        role: newRole,
+      },
+    });
+
+    return { 
+      status: 200 as const, 
+      data: { id: updatedUser.id, name: updatedUser.name, email: updatedUser.email, role: updatedUser.role } 
     };
-
-    const u = this.users[index];
-    return { status: 200 as const, data: { id: u.id, name: u.name, email: u.email, role: u.role } };
   }
 
-  delete(id: number) {
-    const index = this.users.findIndex(u => u.id === id);
-    if (index < 0) return { status: 404 as const, data: { error: "user not found" } };
-    if (this.users[index].role === "MASTER") {
+  async delete(id: number) {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return { status: 404 as const, data: { error: "user not found" } };
+    
+    if (user.role === PrismaUserRole.MASTER) {
       return { status: 400 as const, data: { error: "cannot delete master user" } };
     }
-    this.users.splice(index, 1);
+
+    await prisma.user.delete({ where: { id } });
     return { status: 204 as const, data: null };
   }
 }

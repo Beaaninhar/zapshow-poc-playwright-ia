@@ -36,6 +36,10 @@ export class TestsService {
     return this.repo.saveNewVersion(testId, definition);
   }
 
+  async listLatest() {
+    return this.repo.listLatest();
+  }
+
   async run(req: RunRequest) {
     const { baseURL, actions } = compile(req);
     return enqueueRun(() => execute(actions, baseURL, req.artifacts));

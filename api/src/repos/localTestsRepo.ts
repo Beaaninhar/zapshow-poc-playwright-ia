@@ -57,4 +57,11 @@ export class LocalTestsRepo implements TestsRepo {
     const list = data.tests[testId];
     return list?.at(-1) ?? null;
   }
+
+  async listLatest(): Promise<TestVersion[]> {
+    const data = await this.load();
+    return Object.values(data.tests)
+      .map((list) => list.at(-1))
+      .filter((item): item is TestVersion => Boolean(item));
+  }
 }

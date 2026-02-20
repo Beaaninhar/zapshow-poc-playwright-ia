@@ -1,15 +1,48 @@
 version: "3.8"
+
 services:
+  db:
+    image: postgres:17-alpine
+    container_name: app_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: appdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d appdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   api:
     build: ./api
+    container_name: app_api
     ports:
       - "3001:3001"
     environment:
-      - NODE_ENV=production
+      NODE_ENV: production
+      # ajuste o nome do DB/USER/PASS conforme acima
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/appdb?schema=public
+    depends_on:
+      db:
+        condition: service_healthy
 
   web:
-    build: ./web
+    build:
+      context: ./web
+      args:
+        # isso é “baked” no build do Vite:
+        VITE_API_BASE: http://localhost:3001
+        # (se você usa host.docker.internal no Windows e quer manter, pode trocar aqui)
+        # VITE_API_BASE: http://host.docker.internal:3001
+    container_name: app_web
     ports:
       - "5173:5173"
-    environment:
-      - VITE_API_BASE=http://host.docker.internal:3001
+
+volumes:
+  pgdata:

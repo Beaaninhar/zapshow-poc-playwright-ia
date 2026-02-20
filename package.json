@@ -7,7 +7,10 @@
     "web"
   ],
   "scripts": {
-    "dev": "concurrently --raw -k -n API,WEB \"cmd /d /s /c npm -w api run dev\" \"cmd /d /s /c npm -w web run dev\"",
+    "postinstall": "npm run prisma:generate",
+    "dev": "npm run dev:setup && npm run dev:server",
+    "dev:setup": "powershell -ExecutionPolicy Bypass -File ./scripts/dev-setup.ps1",
+    "dev:server": "concurrently --raw -k -n API,WEB \"npm -w api run dev:server\" \"npm -w web run dev\"",
     "dev:api": "npm -w api run dev",
     "dev:web": "npm -w web run dev",
     "build": "npm -ws run build",
@@ -15,7 +18,13 @@
     "build:api": "npm -w api run build",
     "build:web": "npm -w web run build",
     "test:api": "npm -w api run test",
-    "test:web": "npm -w web run test"
+    "test:web": "npm -w web run test",
+    "prisma:generate": "npm -w api run prisma:generate",
+    "prisma:db:push": "npm -w api run prisma:db:push",
+    "prisma:import:tests": "npm -w api run prisma:import:tests",
+    "prisma:deploy": "npm -w api run prisma:deploy",
+    "prisma:seed": "npm -w api run prisma:seed",
+    "prisma:studio": "npm -w api run prisma:studio"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

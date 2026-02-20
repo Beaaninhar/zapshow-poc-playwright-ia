@@ -11,4 +11,5 @@ export type TestVersion = {
 export interface TestsRepo {
   saveNewVersion(testId: string, definition: TestDefinition): Promise<TestVersion>;
   getLatest(testId: string): Promise<TestVersion | null>;
+  listLatest(): Promise<TestVersion[]>;
 }

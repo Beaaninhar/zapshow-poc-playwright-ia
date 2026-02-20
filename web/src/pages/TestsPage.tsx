@@ -29,7 +29,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
-import { AuthUser, ImportableSpec, Job, Step, createJob, getJob, listSpecFiles, runTest, runTestsBatch } from "../services/apiClient";
+import { AuthUser, ImportableSpec, Job, Step, createJob, getJob, listDbTests, listSpecFiles, runTest, runTestsBatch } from "../services/apiClient";
 import {
   buildRunRequest,
   buildTestDefinition,
@@ -105,6 +105,38 @@ export default function TestsPage({ currentUser, onLogout }: TestsPageProps) {
       window.removeEventListener("focus", refresh);
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const syncDbTests = async () => {
+      try {
+        const dbTests = await listDbTests(currentUser);
+        if (!active || dbTests.length === 0) return;
+
+        const now = new Date().toISOString();
+        const mapped: LocalTest[] = dbTests.map((item) => ({
+          id: `db-${item.testId}`,
+          identifier: item.testId,
+          name: item.definition.name?.trim() || item.testId,
+          baseURL: item.definition.baseURL || window.location.origin,
+          steps: item.definition.steps.map((step) => buildLocalStepFromStep(step)),
+          variables: {},
+          createdAt: item.createdAt || now,
+          updatedAt: item.createdAt || now,
+        }));
+
+        saveLocalTests(mapped);
+        setTests(mapped);
+      } catch (error) {
+        toast.error(`Failed to load tests from DB: ${formatErrorMessage(error)}`);
+      }
+    };
+
+    syncDbTests();
+    return () => {
+      active = false;
+    };
+  }, [currentUser]);
 
   useEffect(() => {
     if (!job) return;

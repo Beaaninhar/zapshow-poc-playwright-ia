@@ -1,29 +1,38 @@
-import type { Event, UserRole } from "../domain/model";
+import { prisma } from "../lib/prisma";
+import { UserRole as PrismaUserRole } from "@prisma/client";
+import type { UserRole } from "../domain/model";
 import type { CreateEventBody } from "../http/dto";
 
 export class EventsService {
-  private events: Event[] = [];
-  private nextEventId = 1;
-
-  reset() {
-    this.events = [];
-    this.nextEventId = 1;
+  async reset() {
+    await prisma.event.deleteMany();
   }
 
-  list(role: UserRole, userId: number) {
-    if (role === "MASTER") return this.events;
-    return this.events.filter(e => e.createdByUserId === userId);
+  async list(role: UserRole, userId: number) {
+    if (role === "MASTER") {
+      return await prisma.event.findMany({
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+    return await prisma.event.findMany({
+      where: { createdByUserId: userId },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
-  countByUserId(userId: number) {
-    return this.events.filter(e => e.createdByUserId === userId).length;
+  async countByUserId(userId: number) {
+    return await prisma.event.count({
+      where: { createdByUserId: userId },
+    });
   }
 
-  deleteByUserId(userId: number) {
-    this.events = this.events.filter(e => e.createdByUserId !== userId);
+  async deleteByUserId(userId: number) {
+    await prisma.event.deleteMany({
+      where: { createdByUserId: userId },
+    });
   }
 
-  create(input: {
+  async create(input: {
     role: UserRole | null;
     userId: number | null;
     userName: string | null;
@@ -43,17 +52,17 @@ export class EventsService {
       };
     }
 
-    const event: Event = {
-      id: this.nextEventId++,
-      title,
-      description,
-      date,
-      price,
-      createdByUserId: userId,
-      createdByName: userName,
-    };
+    const event = await prisma.event.create({
+      data: {
+        title,
+        description,
+        date,
+        price,
+        createdByUserId: userId,
+        createdByName: userName,
+      },
+    });
 
-    this.events.push(event);
     return { status: 201 as const, data: event };
   }
 }
